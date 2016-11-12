@@ -17,7 +17,7 @@ struct tty_queue {
 	unsigned long data;
 	unsigned long head;
 	unsigned long tail;
-	struct task_struct * proc_list;
+	struct task_struct *proc_list;
 	char buf[TTY_BUF_SIZE];
 };
 
@@ -46,11 +46,11 @@ struct tty_struct {
 	struct termios termios;
 	int pgrp;
 	int stopped;
-	void (*write)(struct tty_struct * tty);
+	void (*write) (struct tty_struct * tty);
 	struct tty_queue read_q;
 	struct tty_queue write_q;
 	struct tty_queue secondary;
-	};
+};
 
 extern struct tty_struct tty_table[];
 
@@ -66,12 +66,12 @@ void rs_init(void);
 void con_init(void);
 void tty_init(void);
 
-int tty_read(unsigned c, char * buf, int n);
-int tty_write(unsigned c, char * buf, int n);
+int tty_read(unsigned c, char *buf, int n);
+int tty_write(unsigned c, char *buf, int n);
 
-void rs_write(struct tty_struct * tty);
-void con_write(struct tty_struct * tty);
+void rs_write(struct tty_struct *tty);
+void con_write(struct tty_struct *tty);
 
-void copy_to_cooked(struct tty_struct * tty);
+void copy_to_cooked(struct tty_struct *tty);
 
 #endif
