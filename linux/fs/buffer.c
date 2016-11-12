@@ -26,14 +26,14 @@
 #include <asm/system.h>
 #include <asm/io.h>
 
-extern int end;
-struct buffer_head *start_buffer = (struct buffer_head *)&end;
+extern int _end;
+struct buffer_head *start_buffer = (struct buffer_head *)&_end;
 struct buffer_head *hash_table[NR_HASH];
 static struct buffer_head *free_list;
 static struct task_struct *buffer_wait = NULL;
 int NR_BUFFERS = 0;
 
-static inline void wait_on_buffer(struct buffer_head *bh)
+static __inline void wait_on_buffer(struct buffer_head *bh)
 {
 	cli();
 	while (bh->b_lock)
@@ -81,7 +81,7 @@ int sync_dev(int dev)
 	return 0;
 }
 
-void inline invalidate_buffers(int dev)
+void __inline invalidate_buffers(int dev)
 {
 	int i;
 	struct buffer_head *bh;
@@ -110,6 +110,8 @@ void inline invalidate_buffers(int dev)
  * and that mount/open needn't know that floppies/whatever are
  * special.
  */
+extern void put_super(int dev);
+extern void invalidate_inodes(int dev);
 void check_disk_change(int dev)
 {
 	int i;
@@ -128,7 +130,7 @@ void check_disk_change(int dev)
 #define _hashfn(dev,block) (((unsigned)(dev^block))%NR_HASH)
 #define hash(dev,block) hash_table[_hashfn(dev,block)]
 
-static inline void remove_from_queues(struct buffer_head *bh)
+static __inline void remove_from_queues(struct buffer_head *bh)
 {
 /* remove from hash-queue */
 	if (bh->b_next)
@@ -146,7 +148,7 @@ static inline void remove_from_queues(struct buffer_head *bh)
 		free_list = bh->b_next_free;
 }
 
-static inline void insert_into_queues(struct buffer_head *bh)
+static __inline void insert_into_queues(struct buffer_head *bh)
 {
 /* put at end of free list */
 	bh->b_next_free = free_list;
@@ -280,19 +282,21 @@ struct buffer_head *bread(int dev, int block)
 	return NULL;
 }
 
-#define COPYBLK(from,to) \
-__asm__("cld\n\t" \
-	"rep\n\t" \
-	"movsl\n\t" \
-	::"c" (BLOCK_SIZE/4),"S" (from),"D" (to) \
-	:"cx","di","si")
+static __inline void COPYBLK(unsigned long from, unsigned long to)
+{
+__asm mov ecx, BLOCK_SIZE / 4
+	__asm mov	esi, from
+	__asm mov	edi, to
+	__asm cld
+	__asm rep	movsd
+}
 
 /*
- * bread_page reads four buffers into memory at the desired address. It's
- * a function of its own, as there is some speed to be got by reading them
- * all at the same time, not waiting for one to be read, and then another
- * etc.
- */
+* bread_page reads four buffers into memory at the desired address. It's
+* a function of its own, as there is some speed to be got by reading them
+* all at the same time, not waiting for one to be read, and then another
+* etc.
+*/
 void bread_page(unsigned long address, int dev, int b[4])
 {
 	struct buffer_head *bh[4];
@@ -348,14 +352,14 @@ struct buffer_head *breada(int dev, int first, ...)
 void buffer_init(long buffer_end)
 {
 	struct buffer_head *h = start_buffer;
-	void *b;
+	char *b;
 	int i;
 
 	if (buffer_end == 1 << 20)
 		b = (void *)(640 * 1024);
 	else
 		b = (void *)buffer_end;
-	while ((b -= BLOCK_SIZE) >= ((void *)(h + 1))) {
+	while ((b -= BLOCK_SIZE) >= ((char *)(h + 1))) {
 		h->b_dev = 0;
 		h->b_dirt = 0;
 		h->b_count = 0;

@@ -71,14 +71,16 @@ int copy_process(int nr, long ebp, long edi, long esi, long gs, long none,
 		 long eip, long cs, long eflags, long esp, long ss)
 {
 	struct task_struct *p;
+	struct i387_struct *m;
 	int i;
 	struct file *f;
 
-	p = (struct task_struct *)get_free_page();
+	p = (struct task_struct *) get_free_page();
 	if (!p)
 		return -EAGAIN;
 	task[nr] = p;
-	*p = *current;		/* NOTE! this doesn't copy the supervisor stack */
+	__asm	cld
+	*p = *current;	/* NOTE! this doesn't copy the supervisor stack */
 	p->state = TASK_UNINTERRUPTIBLE;
 	p->pid = last_pid;
 	p->father = current->pid;
@@ -110,8 +112,13 @@ int copy_process(int nr, long ebp, long edi, long esi, long gs, long none,
 	p->tss.gs = gs & 0xffff;
 	p->tss.ldt = _LDT(nr);
 	p->tss.trace_bitmap = 0x80000000;
+	m = &p->tss.i387;
 	if (last_task_used_math == current)
-		__asm__("clts ; fnsave %0"::"m"(p->tss.i387));
+	{
+		__asm mov		eax, m
+		__asm clts
+		__asm fnsave	TBYTE PTR[eax]
+	}
 	if (copy_mem(nr, p)) {
 		task[nr] = NULL;
 		free_page((long)p);

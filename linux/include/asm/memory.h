@@ -5,10 +5,15 @@
  *  user data space). This is NOT a bug, as any user program that changes
  *  es deserves to die if it isn't careful.
  */
-#define memcpy(dest,src,n) ({ \
-void * _res = dest; \
-__asm__ ("cld;rep;movsb" \
-	::"D" ((long)(_res)),"S" ((long)(src)),"c" ((long) (n)) \
-	:"di","si","cx"); \
-_res; \
-})
+static __inline void* memcpy(void *dest, void *src, int n)
+{
+	void *_res = dest;
+
+	__asm mov	edi, _res
+	__asm mov	esi, src
+	__asm mov	ecx, n
+	__asm cld
+	__asm rep	movsb
+
+	return _res;
+}

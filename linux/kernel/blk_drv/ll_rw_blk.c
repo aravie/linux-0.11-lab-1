@@ -39,7 +39,7 @@ struct blk_dev_struct blk_dev[NR_BLK_DEV] = {
 	{NULL, NULL}		/* dev lp */
 };
 
-static inline void lock_buffer(struct buffer_head *bh)
+static __inline void lock_buffer(struct buffer_head *bh)
 {
 	cli();
 	while (bh->b_lock)
@@ -48,7 +48,7 @@ static inline void lock_buffer(struct buffer_head *bh)
 	sti();
 }
 
-static inline void unlock_buffer(struct buffer_head *bh)
+static __inline void unlock_buffer(struct buffer_head *bh)
 {
 	if (!bh->b_lock)
 		printk("ll_rw_block.c: buffer not locked\n\r");

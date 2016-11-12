@@ -19,10 +19,19 @@ int sync_dev(int dev);
 void wait_for_keypress(void);
 
 /* set_bit uses setb, as gas doesn't recognize setc */
-#define set_bit(bitnr,addr) ({ \
-register int __res __asm__("ax"); \
-__asm__("bt %2,%3;setb %%al":"=a" (__res):"a" (0),"r" (bitnr),"m" (*(addr))); \
-__res; })
+static __inline int set_bit(int bitnr, void *addr)
+{
+	register int __res;
+
+	__asm xor eax, eax
+	__asm mov edi, addr
+	__asm mov edx, bitnr
+	__asm bt DWORD PTR[edi], edx
+	__asm setb al
+	__asm mov __res, eax
+
+	return __res;
+}
 
 struct super_block super_block[NR_SUPER];
 /* this is initialized in init/main.c */
@@ -74,7 +83,6 @@ struct super_block *get_super(int dev)
 void put_super(int dev)
 {
 	struct super_block *sb;
-	struct m_inode *inode;
 	int i;
 
 	if (dev == ROOT_DEV) {

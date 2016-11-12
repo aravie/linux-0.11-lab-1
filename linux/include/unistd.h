@@ -130,57 +130,54 @@
 #define __NR_setreuid	70
 #define __NR_setregid	71
 
-#define _syscall0(type,name) \
-type name(void) \
-{ \
-long __res; \
-__asm__ volatile ("int $0x80" \
-	: "=a" (__res) \
-	: "0" (__NR_##name)); \
-if (__res >= 0) \
-	return (type) __res; \
-errno = -__res; \
-return -1; \
-}
+#define _syscall0(type, name) \
+	type name() \
+	{ \
+	long __res; \
+	{ \
+	__asm mov	eax, __NR_##name \
+	__asm int	0x80 \
+	__asm mov	__res, eax \
+	} \
+	if (__res >= 0) \
+	return (type)__res; \
+	errno = -__res; \
+	return -1; \
+	}
 
 #define _syscall1(type,name,atype,a) \
-type name(atype a) \
-{ \
-long __res; \
-__asm__ volatile ("int $0x80" \
-	: "=a" (__res) \
-	: "0" (__NR_##name),"b" ((long)(a))); \
-if (__res >= 0) \
-	return (type) __res; \
-errno = -__res; \
-return -1; \
-}
-
-#define _syscall2(type,name,atype,a,btype,b) \
-type name(atype a,btype b) \
-{ \
-long __res; \
-__asm__ volatile ("int $0x80" \
-	: "=a" (__res) \
-	: "0" (__NR_##name),"b" ((long)(a)),"c" ((long)(b))); \
-if (__res >= 0) \
-	return (type) __res; \
-errno = -__res; \
-return -1; \
-}
+	type name(atype a) \
+	{ \
+	long __res; \
+	{ \
+	__asm mov	eax, __NR_##name \
+	__asm mov	ebx, a \
+	__asm int	0x80 \
+	__asm mov	__res, eax \
+	} \
+	if (__res >= 0) \
+	return (type)__res; \
+	errno = -__res; \
+	return -1; \
+	}
 
 #define _syscall3(type,name,atype,a,btype,b,ctype,c) \
-type name(atype a,btype b,ctype c) \
-{ \
-long __res; \
-__asm__ volatile ("int $0x80" \
-	: "=a" (__res) \
-	: "0" (__NR_##name),"b" ((long)(a)),"c" ((long)(b)),"d" ((long)(c))); \
-if (__res>=0) \
-	return (type) __res; \
-errno=-__res; \
-return -1; \
-}
+	type name(atype a, btype b, ctype c) \
+	{ \
+	long __res; \
+	{ \
+	__asm mov	eax, __NR_##name \
+	__asm mov	ebx, a \
+	__asm mov	ecx, b \
+	__asm mov	edx, c \
+	__asm int	0x80 \
+	__asm mov	__res, eax \
+	} \
+	if (__res >= 0) \
+	return (type)__res; \
+	errno = -__res; \
+	return -1; \
+	}
 
 #endif /* __LIBRARY__ */
 

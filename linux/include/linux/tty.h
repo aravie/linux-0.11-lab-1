@@ -29,9 +29,9 @@ struct tty_queue {
 #define FULL(a) (!LEFT(a))
 #define CHARS(a) (((a).head-(a).tail)&(TTY_BUF_SIZE-1))
 #define GETCH(queue,c) \
-(void)({c=(queue).buf[(queue).tail];INC((queue).tail);})
+	(void)(c=(queue).buf[(queue).tail],INC((queue).tail))
 #define PUTCH(c,queue) \
-(void)({(queue).buf[(queue).head]=(c);INC((queue).head);})
+	(void)((queue).buf[(queue).head]=(c),INC((queue).head))
 
 #define INTR_CHAR(tty) ((tty)->termios.c_cc[VINTR])
 #define QUIT_CHAR(tty) ((tty)->termios.c_cc[VQUIT])

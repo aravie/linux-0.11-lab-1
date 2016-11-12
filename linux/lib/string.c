@@ -4,8 +4,8 @@
  *  (C) 1991  Linus Torvalds
  */
 
-#ifndef __GNUC__
-#error I want gcc!
+#ifndef _MSC_VER
+#error I want msc!
 #endif
 
 #define extern

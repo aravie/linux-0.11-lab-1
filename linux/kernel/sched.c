@@ -78,17 +78,21 @@ struct {
  */
 void math_state_restore()
 {
+	struct i387_struct *m;
 	if (last_task_used_math == current)
 		return;
-	__asm__("fwait");
+	__asm fwait
 	if (last_task_used_math) {
-		__asm__("fnsave %0"::"m"(last_task_used_math->tss.i387));
+		m = &last_task_used_math->tss.i387;
+		__asm mov		eax, m
+		__asm fnsave	TBYTE PTR[eax]
 	}
 	last_task_used_math = current;
 	if (current->used_math) {
-		__asm__("frstor %0"::"m"(current->tss.i387));
+		__asm mov		eax, m
+		__asm frstor	TBYTE PTR[eax]
 	} else {
-		__asm__("fninit"::);
+		__asm fninit
 		current->used_math = 1;
 	}
 }
@@ -177,7 +181,8 @@ void interruptible_sleep_on(struct task_struct **p)
 		panic("task[0] trying to sleep");
 	tmp = *p;
 	*p = current;
-repeat:current->state = TASK_INTERRUPTIBLE;
+repeat:
+	current->state = TASK_INTERRUPTIBLE;
 	schedule();
 	if (*p && *p != current) {
 		(**p).state = 0;
@@ -269,7 +274,7 @@ void do_floppy_timer(void)
 
 static struct timer_list {
 	long jiffies;
-	void (*fn) ();
+	void (*fn) (void);
 	struct timer_list *next;
 } timer_list[TIME_REQUESTS], *next_timer = NULL;
 
@@ -405,8 +410,10 @@ void sched_init(void)
 		p->a = p->b = 0;
 		p++;
 	}
-/* Clear NT, so that we won't have troubles with that later on */
-	__asm__("pushfl ; andl $0xffffbfff,(%esp) ; popfl");
+	/* Clear NT, so that we won't have troubles with that later on */
+	__asm pushfd
+	__asm and DWORD PTR[esp], 0xFFFFBFFF
+	__asm popfd
 	ltr(0);
 	lldt(0);
 	outb_p(0x36, 0x43);	/* binary, mode 3, LSB/MSB, ch 0 */

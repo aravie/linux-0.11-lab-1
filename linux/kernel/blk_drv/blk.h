@@ -43,7 +43,7 @@ struct request {
 (s1)->sector < (s2)->sector)))
 
 struct blk_dev_struct {
-	void (*request_fn) (void);
+	void (*request_fn) ();
 	struct request *current_request;
 };
 
@@ -98,7 +98,7 @@ void (*DEVICE_INTR) (void) = NULL;
 #endif
 static void (DEVICE_REQUEST) (void);
 
-extern inline void unlock_buffer(struct buffer_head *bh)
+extern __inline void unlock_buffer(struct buffer_head *bh)
 {
 	if (!bh->b_lock)
 		printk(DEVICE_NAME ": free buffer being unlocked\n");
@@ -106,7 +106,7 @@ extern inline void unlock_buffer(struct buffer_head *bh)
 	wake_up(&bh->b_wait);
 }
 
-extern inline void end_request(int uptodate)
+extern __inline void end_request(int uptodate)
 {
 	DEVICE_OFF(CURRENT->dev);
 	if (CURRENT->bh) {

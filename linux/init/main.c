@@ -20,10 +20,11 @@
  * won't be any messing with the stack from main(), but we define
  * some others too.
  */
-static inline _syscall0(int, fork)
-static inline _syscall0(int, pause)
-static inline _syscall1(int, setup, void *, BIOS)
-static inline _syscall0(int, sync)
+static __inline _syscall0(int, fork)
+static __inline _syscall0(int, pause)
+static __inline _syscall1(int, setup, void *, BIOS)
+static __inline _syscall0(int, sync)
+
 #include <linux/tty.h>
 #include <linux/sched.h>
 #include <linux/head.h>
@@ -62,10 +63,11 @@ extern long startup_time;
  * bios-listing reading. Urghh.
  */
 
-#define CMOS_READ(addr) ({ \
-outb_p(0x80|addr,0x70); \
-inb_p(0x71); \
-})
+static __inline int CMOS_READ(unsigned char addr)
+{
+	outb_p(0x80 | addr, 0x70);
+	return inb_p(0x71);
+}
 
 #define BCD_TO_BIN(val) ((val)=((val)&15) + ((val)>>4)*10)
 
@@ -106,6 +108,7 @@ void main(void)
  * enable them
  */
 	ROOT_DEV = ORIG_ROOT_DEV;
+	__asm	cld
 	drive_info = DRIVE_INFO;
 	memory_end = (1 << 20) + (EXT_MEM_K << 10);
 	memory_end &= 0xfffff000;

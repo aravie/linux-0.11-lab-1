@@ -19,22 +19,45 @@
 #include <asm/segment.h>
 #include <asm/io.h>
 
-#define get_seg_byte(seg,addr) ({ \
-register char __res; \
-__asm__("push %%fs;mov %%ax,%%fs;movb %%fs:%2,%%al;pop %%fs" \
-	:"=a" (__res):"0" (seg),"m" (*(addr))); \
-__res;})
+static __inline char get_seg_byte(unsigned short _seg, char *addr)
+{
+	register char __res;
 
-#define get_seg_long(seg,addr) ({ \
-register unsigned long __res; \
-__asm__("push %%fs;mov %%ax,%%fs;movl %%fs:%2,%%eax;pop %%fs" \
-	:"=a" (__res):"0" (seg),"m" (*(addr))); \
-__res;})
+	__asm mov ax, _seg
+	__asm push fs
+	__asm mov fs, ax
+	__asm mov eax, addr
+	__asm mov al, fs:[eax];
+	__asm pop fs
+	__asm mov __res, al
 
-#define _fs() ({ \
-register unsigned short __res; \
-__asm__("mov %%fs,%%ax":"=a" (__res):); \
-__res;})
+	return __res;
+}
+
+static __inline unsigned long get_seg_long(unsigned short _seg, long *addr)
+{
+	register unsigned long __res;
+
+	__asm mov ax, _seg
+	__asm push fs
+	__asm mov fs, ax
+	__asm mov eax, addr
+	__asm mov eax, fs:[eax];
+	__asm pop fs
+	__asm mov __res, eax
+
+	return __res;
+}
+
+static __inline unsigned short _fs()
+{
+	register unsigned short __res;
+
+	__asm mov ax, fs
+	__asm mov __res, ax
+
+	return __res;
+}
 
 int do_exit(long code);
 
@@ -81,7 +104,8 @@ static void die(char *str, long esp_ptr, long nr)
 	printk("Pid: %d, process nr: %d\n\r", current->pid, 0xffff & i);
 	for (i = 0; i < 10; i++)
 		printk("%02x ",
-		       0xff & get_seg_byte(esp[1], (i + (char *)esp[0])));
+		       0xff & get_seg_byte((unsigned short)esp[1],
+					   (i + (char *)esp[0])));
 	printk("\n\r");
 	do_exit(11);		/* play segment exception */
 }
@@ -108,9 +132,11 @@ void do_int3(long *esp, long error_code,
 {
 	int tr;
 
-__asm__("str %%ax": "=a"(tr):"0"(0));
+	__asm xor eax, eax
+	__asm str ax
+	__asm mov tr, eax
 	printk("eax\t\tebx\t\tecx\t\tedx\n\r%8x\t%8x\t%8x\t%8x\n\r",
-	       eax, ebx, ecx, edx);
+		   eax, ebx, ecx, edx);
 	printk("esi\t\tedi\t\tebp\t\tesp\n\r%8x\t%8x\t%8x\t%8x\n\r",
 	       esi, edi, ebp, (long)esp);
 	printk("\n\rds\tes\tfs\ttr\n\r%4x\t%4x\t%4x\t%4x\n\r", ds, es, fs, tr);

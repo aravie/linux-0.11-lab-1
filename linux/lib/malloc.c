@@ -95,7 +95,7 @@ struct bucket_desc *free_bucket_desc = (struct bucket_desc *)0;
 /*
  * This routine initializes a bucket description page.
  */
-static inline void init_bucket_desc()
+static __inline void init_bucket_desc()
 {
 	struct bucket_desc *bdesc, *first;
 	int i;
@@ -126,7 +126,7 @@ void *malloc(unsigned int len)
 	 * for this request.
 	 */
 	for (bdir = bucket_dir; bdir->size; bdir++)
-		if (bdir->size >= len)
+		if ((unsigned int)bdir->size >= len)
 			break;
 	if (!bdir->size) {
 		printk("malloc called with impossibly large argument (%d)\n",
@@ -154,7 +154,8 @@ void *malloc(unsigned int len)
 		free_bucket_desc = bdesc->next;
 		bdesc->refcnt = 0;
 		bdesc->bucket_size = bdir->size;
-		bdesc->page = bdesc->freeptr = (void *)cp = get_free_page();
+		bdesc->page = bdesc->freeptr = (void *)cp =
+		    (void *)get_free_page();
 		if (!cp)
 			panic("Out of memory in kernel malloc()");
 		/* Set up the chain of free objects */

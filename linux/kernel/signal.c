@@ -25,7 +25,7 @@ int sys_ssetmask(int newmask)
 	return old;
 }
 
-static inline void save_old(char *from, char *to)
+static __inline void save_old(char *from, char *to)
 {
 	int i;
 
@@ -37,7 +37,7 @@ static inline void save_old(char *from, char *to)
 	}
 }
 
-static inline void get_new(char *from, char *to)
+static __inline void get_new(char *from, char *to)
 {
 	int i;
 

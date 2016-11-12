@@ -62,15 +62,23 @@ static int permission(struct m_inode *inode, int mask)
  */
 static int match(int len, const char *name, struct dir_entry *de)
 {
-	register int same __asm__("ax");
+	register int same;
+	char *D;
 
 	if (!de || !de->inode || len > NAME_LEN)
 		return 0;
 	if (len < NAME_LEN && de->name[len])
 		return 0;
-__asm__("cld\n\t" "fs ; repe ; cmpsb\n\t" "setz %%al":"=a"(same)
-:		"0"(0), "S"((long)name), "D"((long)de->name), "c"(len)
-:		"cx", "di", "si");
+	D = de->name;
+	__asm xor	eax, eax
+	__asm mov	edi, D
+	__asm mov	esi, name
+	__asm mov	ecx, len
+	__asm cld
+	__asm repe	cmps BYTE PTR fs : [esi], BYTE PTR es : [edi];
+	__asm setz	al
+	__asm mov	same, eax
+
 	return same;
 }
 

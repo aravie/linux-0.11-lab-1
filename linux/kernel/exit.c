@@ -32,7 +32,7 @@ void release(struct task_struct *p)
 	panic("trying to release non-existent task");
 }
 
-static inline int send_sig(long sig, struct task_struct *p, int priv)
+static __inline int send_sig(long sig, struct task_struct *p, int priv)
 {
 	if (!p || sig < 1 || sig > 32)
 		return -EINVAL;

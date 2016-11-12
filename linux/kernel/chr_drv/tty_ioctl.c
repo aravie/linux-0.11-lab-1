@@ -25,7 +25,7 @@ static void change_speed(struct tty_struct *tty)
 {
 	unsigned short port, quot;
 
-	if (!(port = tty->read_q.data))
+	if (!(port = (unsigned short)tty->read_q.data))
 		return;
 	quot = quotient[tty->termios.c_cflag & CBAUD];
 	cli();
@@ -79,10 +79,10 @@ static int get_termio(struct tty_struct *tty, struct termio *termio)
 	struct termio tmp_termio;
 
 	verify_area(termio, sizeof(*termio));
-	tmp_termio.c_iflag = tty->termios.c_iflag;
-	tmp_termio.c_oflag = tty->termios.c_oflag;
-	tmp_termio.c_cflag = tty->termios.c_cflag;
-	tmp_termio.c_lflag = tty->termios.c_lflag;
+	tmp_termio.c_iflag = (unsigned short)tty->termios.c_iflag;
+	tmp_termio.c_oflag = (unsigned short)tty->termios.c_oflag;
+	tmp_termio.c_cflag = (unsigned short)tty->termios.c_cflag;
+	tmp_termio.c_lflag = (unsigned short)tty->termios.c_lflag;
 	tmp_termio.c_line = tty->termios.c_line;
 	for (i = 0; i < NCC; i++)
 		tmp_termio.c_cc[i] = tty->termios.c_cc[i];
@@ -92,8 +92,8 @@ static int get_termio(struct tty_struct *tty, struct termio *termio)
 }
 
 /*
- * This only works as the 386 is low-byt-first
- */
+* This only works as the 386 is low-byt-first
+*/
 static int set_termio(struct tty_struct *tty, struct termio *termio)
 {
 	int i;

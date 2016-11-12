@@ -22,22 +22,21 @@
 
 #include <signal.h>
 
-#include <asm/system.h>
-
 #include <linux/sched.h>
 #include <linux/head.h>
 #include <linux/kernel.h>
 
 volatile void do_exit(long code);
 
-static inline volatile void oom(void)
+static __inline volatile void oom(void)
 {
 	printk("out of memory\n\r");
 	do_exit(SIGSEGV);
 }
 
 #define invalidate() \
-__asm__("movl %%eax,%%cr3"::"a" (0))
+	__asm xor	eax, eax \
+	__asm mov	cr3, eax
 
 /* these are not to be changed without changing head.s etc */
 #define LOW_MEM 0x100000
@@ -47,27 +46,45 @@ __asm__("movl %%eax,%%cr3"::"a" (0))
 #define USED 100
 
 #define CODE_SPACE(addr) ((((addr)+4095)&~4095) < \
-current->start_code + current->end_code)
+	current->start_code + current->end_code)
 
-static long HIGH_MEMORY = 0;
+static unsigned long HIGH_MEMORY = 0;
 
-#define copy_page(from,to) \
-__asm__("cld ; rep ; movsl"::"S" (from),"D" (to),"c" (1024):"cx","di","si")
+#define copy_page(from, to) \
+	__asm mov	esi, from \
+	__asm mov	edi, to \
+	__asm mov	ecx, 1024 \
+	__asm cld \
+	__asm rep	movsd
 
 static unsigned char mem_map[PAGING_PAGES] = { 0, };
 
 /*
- * Get physical address of first (actually last :-) free page, and mark it
- * used. If no free pages left, return 0.
- */
+* Get physical address of first (actually last :-) free page, and mark it
+* used. If no free pages left, return 0.
+*/
 unsigned long get_free_page(void)
 {
-	register unsigned long __res asm("ax");
+	register unsigned long __res;
+	void *D = mem_map + PAGING_PAGES - 1;
 
-__asm__("std ; repne ; scasb\n\t" "jne 1f\n\t" "movb $1,1(%%edi)\n\t" "sall $12,%%ecx\n\t" "addl %2,%%ecx\n\t" "movl %%ecx,%%edx\n\t" "movl $1024,%%ecx\n\t" "leal 4092(%%edx),%%edi\n\t" "rep ; stosl\n\t" "movl %%edx,%%eax\n" "1:":"=a"(__res)
-:		"0"(0), "i"(LOW_MEM), "c"(PAGING_PAGES),
-		"D"(mem_map + PAGING_PAGES - 1)
-:		"di", "cx", "dx");
+	__asm xor eax, eax
+	__asm mov edi, D
+	__asm mov ecx, PAGING_PAGES
+	__asm std
+	__asm repne scasb
+	__asm jne LN1
+	__asm mov 1[edi], 1
+	__asm sal ecx, 12
+	__asm add ecx, LOW_MEM
+	__asm mov edx, ecx
+	__asm mov ecx, 1024
+	__asm lea edi, 4092[edx];
+	__asm rep stosd
+	__asm mov eax, edx
+LN1:
+	__asm mov __res, eax
+
 	return __res;
 }
 

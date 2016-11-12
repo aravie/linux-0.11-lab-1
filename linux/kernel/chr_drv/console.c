@@ -85,7 +85,7 @@ static void sysbeep(void);
 #define RESPONSE "\033[?1;2c"
 
 /* NOTE! gotoxy thinks x==video_num_columns is ok */
-static inline void gotoxy(unsigned int new_x, unsigned int new_y)
+static __inline void gotoxy(unsigned int new_x, unsigned int new_y)
 {
 	if (new_x > video_num_columns || new_y >= video_num_lines)
 		return;
@@ -94,7 +94,7 @@ static inline void gotoxy(unsigned int new_x, unsigned int new_y)
 	pos = origin + y * video_size_row + (x << 1);
 }
 
-static inline void set_origin(void)
+static __inline void set_origin(void)
 {
 	cli();
 	outb_p(12, video_port_reg);
@@ -106,83 +106,99 @@ static inline void set_origin(void)
 
 static void scrup(void)
 {
+	unsigned long c, D, S;
+
 	if (video_type == VIDEO_TYPE_EGAC || video_type == VIDEO_TYPE_EGAM) {
 		if (!top && bottom == video_num_lines) {
 			origin += video_size_row;
 			pos += video_size_row;
 			scr_end += video_size_row;
 			if (scr_end > video_mem_end) {
-				__asm__("cld\n\t"
-					"rep\n\t"
-					"movsl\n\t"
-					"movl _video_num_columns,%1\n\t"
-					"rep\n\t"
-					"stosw"::"a"(video_erase_char),
-					"c"((video_num_lines -
-					     1) * video_num_columns >> 1),
-					"D"(video_mem_start), "S"(origin)
-:					"cx", "di", "si");
+				c = (video_num_lines -
+				     1) * video_num_columns >> 1;
+				__asm mov ax, video_erase_char;
+				__asm mov ecx, c
+				__asm mov edi, video_mem_start
+				__asm mov esi, origin
+				__asm cld
+				__asm rep movsd
+				__asm mov ecx, video_num_columns
+				__asm rep stosw
 				scr_end -= origin - video_mem_start;
 				pos -= origin - video_mem_start;
 				origin = video_mem_start;
 			} else {
-				__asm__("cld\n\t"
-					"rep\n\t"
-					"stosw"::"a"(video_erase_char),
-					"c"(video_num_columns),
-					"D"(scr_end - video_size_row)
-:					"cx", "di");
+				D = scr_end - video_size_row;
+			__asm mov ax, video_erase_char
+				__asm mov ecx, video_num_columns
+				__asm mov edi, D
+				__asm cld
+				__asm rep	stosw
 			}
 			set_origin();
-		} else {
-			__asm__("cld\n\t"
-				"rep\n\t"
-				"movsl\n\t"
-				"movl _video_num_columns,%%ecx\n\t"
-				"rep\n\t"
-				"stosw"::"a"(video_erase_char),
-				"c"((bottom - top -
-				     1) * video_num_columns >> 1),
-				"D"(origin + video_size_row * top),
-				"S"(origin + video_size_row * (top + 1))
-:				"cx", "di", "si");
 		}
-	} else {		/* Not EGA/VGA */
-
-		__asm__("cld\n\t"
-			"rep\n\t"
-			"movsl\n\t"
-			"movl _video_num_columns,%%ecx\n\t"
-			"rep\n\t"
-			"stosw"::"a"(video_erase_char),
-			"c"((bottom - top - 1) * video_num_columns >> 1),
-			"D"(origin + video_size_row * top),
-			"S"(origin + video_size_row * (top + 1))
-:			"cx", "di", "si");
+		else {
+			c = (bottom - top - 1) * video_num_columns >> 1;
+			D = origin + video_size_row * top;
+			S = origin + video_size_row * (top + 1);
+			__asm mov	ax, video_erase_char
+			__asm mov	ecx, c
+			__asm mov	edi, D
+			__asm mov	esi, S
+			__asm cld
+			__asm rep	movsd
+			__asm mov	ecx, video_num_columns
+			__asm rep	stosw
+		}
+	}
+	else		/* Not EGA/VGA */
+	{
+		c = (bottom - top - 1) * video_num_columns >> 1;
+		D = origin + video_size_row * top;
+		S = origin + video_size_row * (top + 1);
+__asm mov ax, video_erase_char
+		__asm mov ecx, c
+		__asm mov edi, D
+		__asm mov esi, S
+		__asm cld
+		__asm rep movsd
+		__asm mov ecx, video_num_columns
+		__asm rep	stosw
 	}
 }
 
 static void scrdown(void)
 {
-	if (video_type == VIDEO_TYPE_EGAC || video_type == VIDEO_TYPE_EGAM) {
-		__asm__("std\n\t" "rep\n\t" "movsl\n\t" "addl $2,%%edi\n\t"	/* %edi has been decremented by 4 */
-			"movl _video_num_columns,%%ecx\n\t"
-			"rep\n\t"
-			"stosw"::"a"(video_erase_char),
-			"c"((bottom - top - 1) * video_num_columns >> 1),
-			"D"(origin + video_size_row * bottom - 4),
-			"S"(origin + video_size_row * (bottom - 1) - 4)
-:			"ax", "cx", "di", "si");
-	} else {		/* Not EGA/VGA */
+	unsigned long c, D, S;
 
-		__asm__("std\n\t" "rep\n\t" "movsl\n\t" "addl $2,%%edi\n\t"	/* %edi has been decremented by 4 */
-			"movl _video_num_columns,%%ecx\n\t"
-			"rep\n\t"
-			"stosw"::"a"(video_erase_char),
-			"c"((bottom - top - 1) * video_num_columns >> 1),
-			"D"(origin + video_size_row * bottom - 4),
-			"S"(origin + video_size_row * (bottom - 1) - 4)
-:			"ax", "cx", "di", "si");
+	if (video_type == VIDEO_TYPE_EGAC || video_type == VIDEO_TYPE_EGAM)
+	{
+		c = (bottom - top - 1) * video_num_columns >> 1;
+		D = origin + video_size_row * bottom - 4;
+		S = origin + video_size_row * (bottom - 1) - 4;
+		__asm mov	ax, video_erase_char
+		__asm mov	ecx, c
+		__asm mov	edi, D
+		__asm mov	esi, S
+		__asm std
+		__asm rep	movsd
+		__asm add	edi, 2	/* %edi has been decremented by 4 */
+		__asm mov	ecx, video_num_columns
+		__asm rep	stosw
+	}
+	else		/* Not EGA/VGA */
+	{
+		c = (bottom - top - 1) * video_num_columns >> 1;
+		D = origin + video_size_row * bottom - 4;
+		S = origin + video_size_row * (bottom - 1) - 4;
+		__asm mov	ax, video_erase_char
+		__asm mov	ecx, c
+		__asm mov	edi, D
+		__asm mov	esi, S
+		__asm std
+		__asm rep	movsd
+		__asm add	edi, 2	/* %edi has been decremented by 4 */
+		__asm rep	stosw
 	}
 }
 
@@ -223,8 +239,8 @@ static void del(void)
 
 static void csi_J(int par)
 {
-	long count __asm__("cx");
-	long start __asm__("di");
+	long count;
+	long start;
 
 	switch (par) {
 	case 0:		/* erase from cursor to end of display */
@@ -242,16 +258,17 @@ static void csi_J(int par)
 	default:
 		return;
 	}
-	__asm__("cld\n\t"
-		"rep\n\t"
-		"stosw\n\t"::"c"(count), "D"(start), "a"(video_erase_char)
-:		"cx", "di");
+__asm mov ecx, count
+	__asm mov edi, start
+	__asm mov ax, video_erase_char
+	__asm cld
+	__asm rep	stosw
 }
 
 static void csi_K(int par)
 {
-	long count __asm__("cx");
-	long start __asm__("di");
+	long count;
+	long start;
 
 	switch (par) {
 	case 0:		/* erase from cursor to end of line */
@@ -271,15 +288,16 @@ static void csi_K(int par)
 	default:
 		return;
 	}
-	__asm__("cld\n\t"
-		"rep\n\t"
-		"stosw\n\t"::"c"(count), "D"(start), "a"(video_erase_char)
-:		"cx", "di");
+__asm mov ecx, count
+	__asm mov edi, start
+	__asm mov ax, video_erase_char
+	__asm cld
+	__asm rep	stosw
 }
 
 void csi_m(void)
 {
-	int i;
+	unsigned long i;
 
 	for (i = 0; i <= npar; i++)
 		switch (par[i]) {
@@ -301,7 +319,7 @@ void csi_m(void)
 		}
 }
 
-static inline void set_cursor(void)
+static __inline void set_cursor(void)
 {
 	cli();
 	outb_p(14, video_port_reg);
@@ -326,7 +344,7 @@ static void respond(struct tty_struct *tty)
 
 static void insert_char(void)
 {
-	int i = x;
+	unsigned long i = x;
 	unsigned short tmp, old = video_erase_char;
 	unsigned short *p = (unsigned short *)pos;
 
@@ -353,7 +371,7 @@ static void insert_line(void)
 
 static void delete_char(void)
 {
-	int i;
+	unsigned long i;
 	unsigned short *p = (unsigned short *)pos;
 
 	if (x >= video_num_columns)
@@ -449,10 +467,7 @@ void con_write(struct tty_struct *tty)
 					pos -= video_size_row;
 					lf();
 				}
-				__asm__("movb _attr,%%ah\n\t"
-					"movw %%ax,%1\n\t"::"a"(c),
-					"m"(*(short *)pos)
-:					"ax");
+				*(short *)pos = (attr << 8) + c;
 				pos += 2;
 				x++;
 			} else if (c == 27)
@@ -631,7 +646,7 @@ void con_init(void)
 	video_num_columns = ORIG_VIDEO_COLS;
 	video_size_row = video_num_columns * 2;
 	video_num_lines = ORIG_VIDEO_LINES;
-	video_page = ORIG_VIDEO_PAGE;
+	video_page = (unsigned char)ORIG_VIDEO_PAGE;
 	video_erase_char = 0x0720;
 
 	if (ORIG_VIDEO_MODE == 7) {	/* Is this a monochrome display? */

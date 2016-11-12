@@ -32,10 +32,12 @@ static int skip_atoi(const char **s)
 #define SPECIAL	32		/* 0x */
 #define SMALL	64		/* use 'abcdef' instead of 'ABCDEF' */
 
-#define do_div(n,base) ({ \
-int __res; \
-__asm__("divl %4":"=a" (n),"=d" (__res):"0" (n),"1" (0),"r" (base)); \
-__res; })
+__inline int do_div(unsigned int *n, int base)
+{
+	int __res = *n % base;
+	*n /= base;
+	return __res;
+}
 
 static char *number(char *str, int num, int base, int size, int precision,
 		    int type)
@@ -68,7 +70,7 @@ static char *number(char *str, int num, int base, int size, int precision,
 		tmp[i++] = '0';
 	else
 		while (num != 0)
-			tmp[i++] = digits[do_div(num, base)];
+			tmp[i++] = digits[do_div(&num, base)];
 	if (i > precision)
 		precision = i;
 	size -= precision;
@@ -145,6 +147,7 @@ repeat:
 			field_width = skip_atoi(&fmt);
 		else if (*fmt == '*') {
 			/* it's the next argument */
+			++fmt;
 			field_width = va_arg(args, int);
 			if (field_width < 0) {
 				field_width = -field_width;
@@ -160,6 +163,7 @@ repeat:
 				precision = skip_atoi(&fmt);
 			else if (*fmt == '*') {
 				/* it's the next argument */
+				++fmt;
 				precision = va_arg(args, int);
 			}
 			if (precision < 0)

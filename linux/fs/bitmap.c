@@ -10,39 +10,66 @@
 #include <linux/sched.h>
 #include <linux/kernel.h>
 
-#define clear_block(addr) \
-__asm__("cld\n\t" \
-	"rep\n\t" \
-	"stosl" \
-	::"a" (0),"c" (BLOCK_SIZE/4),"D" ((long) (addr)):"cx","di")
+static __inline void clear_block(void *addr)
+{
+__asm mov edi, addr
+	__asm mov ecx, BLOCK_SIZE / 4
+	__asm xor eax, eax
+	__asm cld
+	__asm rep	stosd
+}
 
-#define set_bit(nr,addr) ({\
-register int res __asm__("ax"); \
-__asm__ __volatile__("btsl %2,%3\n\tsetb %%al": \
-"=a" (res):"0" (0),"r" (nr),"m" (*(addr))); \
-res;})
+static __inline int set_bit(int nr, void *addr)
+{
+	register int res;
 
-#define clear_bit(nr,addr) ({\
-register int res __asm__("ax"); \
-__asm__ __volatile__("btrl %2,%3\n\tsetnb %%al": \
-"=a" (res):"0" (0),"r" (nr),"m" (*(addr))); \
-res;})
+	__asm xor eax, eax
+	__asm mov edi, addr
+	__asm mov edx, nr
+	__asm bts DWORD PTR[edi], edx
+	__asm setb al
+	__asm mov res, eax
 
-#define find_first_zero(addr) ({ \
-int __res; \
-__asm__("cld\n" \
-	"1:\tlodsl\n\t" \
-	"notl %%eax\n\t" \
-	"bsfl %%eax,%%edx\n\t" \
-	"je 2f\n\t" \
-	"addl %%edx,%%ecx\n\t" \
-	"jmp 3f\n" \
-	"2:\taddl $32,%%ecx\n\t" \
-	"cmpl $8192,%%ecx\n\t" \
-	"jl 1b\n" \
-	"3:" \
-	:"=c" (__res):"c" (0),"S" (addr):"ax","dx","si"); \
-__res;})
+	return res;
+}
+
+static __inline int clear_bit(int nr, void *addr)
+{
+	register int res;
+
+	__asm xor eax, eax
+	__asm mov edi, addr
+	__asm mov edx, nr
+	__asm btr DWORD PTR[edi], edx
+	__asm setnb al
+	__asm mov res, eax
+
+	return res;
+}
+
+static __inline int find_first_zero(void *addr)
+{
+	int __res;
+
+	__asm xor	ecx, ecx
+	__asm mov	esi, addr
+	__asm cld
+LN1 :
+	__asm lodsd
+	__asm not eax
+	__asm bsf	edx, eax
+	__asm je	LN2
+	__asm add	ecx, edx
+	__asm jmp	LN3
+LN2 :
+	__asm add	ecx, 32
+	__asm cmp	ecx, 8192
+	__asm jl	LN1
+LN3 :
+	__asm mov	__res, ecx
+
+	return __res;
+}
 
 void free_block(int dev, int block)
 {
@@ -161,7 +188,7 @@ struct m_inode *new_inode(int dev)
 	inode->i_nlinks = 1;
 	inode->i_dev = dev;
 	inode->i_uid = current->euid;
-	inode->i_gid = current->egid;
+	inode->i_gid = (unsigned char)current->egid;
 	inode->i_dirt = 1;
 	inode->i_num = j + i * 8192;
 	inode->i_mtime = inode->i_atime = inode->i_ctime = CURRENT_TIME;

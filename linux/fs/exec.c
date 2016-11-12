@@ -142,7 +142,7 @@ static unsigned long copy_strings(int argc, char **argv, unsigned long *page,
 					set_fs(old_fs);
 				if (!(pag = (char *)page[p / PAGE_SIZE]) &&
 				    !(pag = (char *)page[p / PAGE_SIZE] =
-				      (unsigned long *)get_free_page()))
+				      (char *)get_free_page()))
 					return 0;
 				if (from_kmem == 2)
 					set_fs(new_fs);
@@ -171,7 +171,8 @@ static unsigned long change_ldt(unsigned long text_size, unsigned long *page)
 	set_base(current->ldt[2], data_base);
 	set_limit(current->ldt[2], data_limit);
 /* make sure fs points to the NEW data segment */
-	__asm__("pushl $0x17\n\tpop %%fs"::);
+	__asm push 0x17
+	__asm pop fs
 	data_base += data_limit;
 	for (i = MAX_ARG_PAGES - 1; i >= 0; i--) {
 		data_base -= PAGE_SIZE;
