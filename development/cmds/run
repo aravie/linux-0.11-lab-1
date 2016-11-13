@@ -16,6 +16,13 @@ if [ ! -e "$LINUX_LAB_PATH/out/rootfs/unmounted" ]; then
 	fi
 fi
 
+if [ ! -e "$LINUX_LAB_PATH/out/hd0.img" ]; then
+	echo create hd0.img...
+	cd $LINUX_LAB_PATH/out/
+	./create-hd0.sh
+	cd -
+fi
+
 # `getconf LONG_BIT` works better than `uname -a`
 if [ `getconf LONG_BIT` = "64" ]
 then

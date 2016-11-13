@@ -3,3 +3,5 @@
 
 rootfs/
 Image
+
+!images/templates
