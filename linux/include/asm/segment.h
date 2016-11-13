@@ -1,3 +1,58 @@
+#ifdef _WIN32
+extern inline unsigned char get_fs_byte(const char *addr)
+{
+	unsigned register char _v;
+
+	__asm mov	edi, addr
+	__asm mov	al, fs :[edi];
+	__asm mov	_v, al
+
+	return _v;
+}
+
+extern inline unsigned short get_fs_word(const unsigned short *addr)
+{
+	unsigned short _v;
+
+	__asm mov	edi, addr
+	__asm mov	ax, fs :[edi];
+	__asm mov	_v, ax
+
+	return _v;
+}
+
+extern inline unsigned long get_fs_long(const unsigned long *addr)
+{
+	unsigned long _v;
+
+	__asm mov	edi, addr
+	__asm mov	eax, fs :[edi];
+	__asm mov	_v, eax
+
+	return _v;
+}
+
+extern inline void put_fs_byte(char val, char *addr)
+{
+	__asm mov	al, val
+	__asm mov	edi, addr
+	__asm mov	fs : [edi], al
+}
+
+extern inline void put_fs_word(short val, short * addr)
+{
+	__asm mov	ax, val
+	__asm mov	edi, addr
+	__asm mov	fs : [edi], ax
+}
+
+extern inline void put_fs_long(unsigned long val, unsigned long * addr)
+{
+	__asm mov	eax, val
+	__asm mov	edi, addr
+	__asm mov	fs : [edi], eax
+}
+#else /* _WIN32 */
 static inline unsigned char get_fs_byte(const char *addr)
 {
 	unsigned register char _v;
@@ -36,6 +91,7 @@ static inline void put_fs_long(unsigned long val, unsigned long *addr)
 {
 	__asm__("movl %0,%%fs:%1"::"r"(val), "m"(*addr));
 }
+#endif /* _WIN32 */
 
 /*
  * Someone who knows GNU asm better than I should double check the followig.
@@ -44,6 +100,33 @@ static inline void put_fs_long(unsigned long val, unsigned long *addr)
  * [ nothing wrong here, Linus ]
  */
 
+#ifdef _WIN32
+extern inline unsigned long get_fs()
+{
+	unsigned short _v;
+
+	__asm mov	ax, fs
+	__asm mov	_v, ax
+
+	return _v;
+}
+
+extern inline unsigned long get_ds()
+{
+	unsigned short _v;
+
+	__asm mov	ax, ds
+	__asm mov	_v, ax
+
+	return _v;
+}
+
+extern inline void set_fs(unsigned long val)
+{
+	__asm mov	eax, val
+	__asm mov	fs, ax
+}
+#else /* _WIN32 */
 static inline unsigned long get_fs()
 {
 	unsigned short _v;
@@ -62,3 +145,4 @@ static inline void set_fs(unsigned long val)
 {
 	__asm__("mov %0,%%fs"::"a"((unsigned short)val));
 }
+#endif /* _WIN32 */

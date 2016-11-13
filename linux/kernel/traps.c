@@ -19,6 +19,47 @@
 #include <asm/segment.h>
 #include <asm/io.h>
 
+#ifdef _WIN32
+static __inline char get_seg_byte(unsigned short _seg, char *addr)
+{
+	register char __res;
+
+	__asm mov ax, _seg
+	__asm push fs
+	__asm mov fs, ax
+	__asm mov eax, addr
+	__asm mov al, fs:[eax];
+	__asm pop fs
+	__asm mov __res, al
+
+	return __res;
+}
+
+static __inline unsigned long get_seg_long(unsigned short _seg, long *addr)
+{
+	register unsigned long __res;
+
+	__asm mov ax, _seg
+	__asm push fs
+	__asm mov fs, ax
+	__asm mov eax, addr
+	__asm mov eax, fs:[eax];
+	__asm pop fs
+	__asm mov __res, eax
+
+	return __res;
+}
+
+static __inline unsigned short _fs()
+{
+	register unsigned short __res;
+
+	__asm mov ax, fs
+	__asm mov __res, ax
+
+	return __res;
+}
+#else /* WIN32 */
 #define get_seg_byte(seg,addr) ({ \
 register char __res; \
 __asm__("push %%fs;mov %%ax,%%fs;movb %%fs:%2,%%al;pop %%fs" \
@@ -35,6 +76,7 @@ __res;})
 register unsigned short __res; \
 __asm__("mov %%fs,%%ax":"=a" (__res):); \
 __res;})
+#endif /* WIN32 */
 
 int do_exit(long code);
 
@@ -81,7 +123,8 @@ static void die(char *str, long esp_ptr, long nr)
 	printk("Pid: %d, process nr: %d\n\r", current->pid, 0xffff & i);
 	for (i = 0; i < 10; i++)
 		printk("%02x ",
-		       0xff & get_seg_byte(esp[1], (i + (char *)esp[0])));
+		       0xff & get_seg_byte((unsigned short)esp[1],
+					   (i + (char *)esp[0])));
 	printk("\n\r");
 	do_exit(11);		/* play segment exception */
 }
@@ -101,6 +144,25 @@ void do_divide_error(long esp, long error_code)
 	die("divide error", esp, error_code);
 }
 
+#ifdef _WIN32
+void do_int3(long *esp, long error_code,
+	     long fs, long es, long ds,
+	     long ebp, long esi, long edi,
+	     long edx, long ecx, long ebx, long eax)
+{
+	int tr;
+
+	__asm xor eax, eax
+	__asm str ax
+	__asm mov tr, eax
+	printk("eax\t\tebx\t\tecx\t\tedx\n\r%8x\t%8x\t%8x\t%8x\n\r",
+		   eax, ebx, ecx, edx);
+	printk("esi\t\tedi\t\tebp\t\tesp\n\r%8x\t%8x\t%8x\t%8x\n\r",
+	       esi, edi, ebp, (long)esp);
+	printk("\n\rds\tes\tfs\ttr\n\r%4x\t%4x\t%4x\t%4x\n\r", ds, es, fs, tr);
+	printk("EIP: %8x   CS: %4x  EFLAGS: %8x\n\r", esp[0], esp[1], esp[2]);
+}
+#else
 void do_int3(long *esp, long error_code,
 	     long fs, long es, long ds,
 	     long ebp, long esi, long edi,
@@ -116,6 +178,7 @@ __asm__("str %%ax": "=a"(tr):"0"(0));
 	printk("\n\rds\tes\tfs\ttr\n\r%4x\t%4x\t%4x\t%4x\n\r", ds, es, fs, tr);
 	printk("EIP: %8x   CS: %4x  EFLAGS: %8x\n\r", esp[0], esp[1], esp[2]);
 }
+#endif /* _WIN32 */
 
 void do_nmi(long esp, long error_code)
 {

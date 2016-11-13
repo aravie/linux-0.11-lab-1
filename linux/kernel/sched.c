@@ -76,6 +76,28 @@ struct {
  *  'math_state_restore()' saves the current math information in the
  * old math state array, and gets the new ones from the current task
  */
+#ifdef _WIN32
+void math_state_restore()
+{
+	struct i387_struct *m;
+	if (last_task_used_math == current)
+		return;
+	__asm fwait
+	if (last_task_used_math) {
+		m = &last_task_used_math->tss.i387;
+		__asm mov		eax, m
+		__asm fnsave	TBYTE PTR[eax]
+	}
+	last_task_used_math = current;
+	if (current->used_math) {
+		__asm mov		eax, m
+		__asm frstor	TBYTE PTR[eax]
+	} else {
+		__asm fninit
+		current->used_math = 1;
+	}
+}
+#else
 void math_state_restore()
 {
 	if (last_task_used_math == current)
@@ -92,6 +114,7 @@ void math_state_restore()
 		current->used_math = 1;
 	}
 }
+#endif /* _WIN32 */
 
 /*
  *  'schedule()' is the scheduler function. This is GOOD CODE! There
@@ -177,7 +200,8 @@ void interruptible_sleep_on(struct task_struct **p)
 		panic("task[0] trying to sleep");
 	tmp = *p;
 	*p = current;
-repeat:current->state = TASK_INTERRUPTIBLE;
+repeat:
+	current->state = TASK_INTERRUPTIBLE;
 	schedule();
 	if (*p && *p != current) {
 		(**p).state = 0;
@@ -269,7 +293,7 @@ void do_floppy_timer(void)
 
 static struct timer_list {
 	long jiffies;
-	void (*fn) ();
+	void (*fn) (void);
 	struct timer_list *next;
 } timer_list[TIME_REQUESTS], *next_timer = NULL;
 
@@ -406,7 +430,13 @@ void sched_init(void)
 		p++;
 	}
 /* Clear NT, so that we won't have troubles with that later on */
+#ifdef _WIN32
+	__asm pushfd
+	__asm and DWORD PTR[esp], 0xFFFFBFFF
+	__asm popfd
+#else
 	__asm__("pushfl ; andl $0xffffbfff,(%esp) ; popfl");
+#endif /* _WIN32 */
 	ltr(0);
 	lldt(0);
 	outb_p(0x36, 0x43);	/* binary, mode 3, LSB/MSB, ch 0 */

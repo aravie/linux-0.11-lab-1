@@ -19,10 +19,26 @@ int sync_dev(int dev);
 void wait_for_keypress(void);
 
 /* set_bit uses setb, as gas doesn't recognize setc */
+#ifdef _WIN32
+static inline int set_bit(int bitnr, void *addr)
+{
+	register int __res;
+
+	__asm xor eax, eax
+	__asm mov edi, addr
+	__asm mov edx, bitnr
+	__asm bt DWORD PTR[edi], edx
+	__asm setb al
+	__asm mov __res, eax
+
+	return __res;
+}
+#else
 #define set_bit(bitnr,addr) ({ \
 register int __res ; \
 __asm__("bt %2,%3;setb %%al":"=a" (__res):"a" (0),"r" (bitnr),"m" (*(addr))); \
 __res; })
+#endif /* _WIN32 */
 
 struct super_block super_block[NR_SUPER];
 /* this is initialized in init/main.c */
@@ -74,7 +90,6 @@ struct super_block *get_super(int dev)
 void put_super(int dev)
 {
 	struct super_block *sb;
-	/* struct m_inode * inode; */
 	int i;
 
 	if (dev == ROOT_DEV) {
@@ -106,7 +121,7 @@ static struct super_block *read_super(int dev)
 	if (!dev)
 		return NULL;
 	check_disk_change(dev);
-	if ((s = get_super(dev)))
+	if (s = get_super(dev))
 		return s;
 	for (s = 0 + super_block;; s++) {
 		if (s >= NR_SUPER + super_block)
@@ -139,12 +154,12 @@ static struct super_block *read_super(int dev)
 		s->s_zmap[i] = NULL;
 	block = 2;
 	for (i = 0; i < s->s_imap_blocks; i++)
-		if ((s->s_imap[i] = bread(dev, block)))
+		if (s->s_imap[i] = bread(dev, block))
 			block++;
 		else
 			break;
 	for (i = 0; i < s->s_zmap_blocks; i++)
-		if ((s->s_zmap[i] = bread(dev, block)))
+		if (s->s_zmap[i] = bread(dev, block))
 			block++;
 		else
 			break;

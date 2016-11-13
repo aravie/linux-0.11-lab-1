@@ -28,10 +28,17 @@ struct tty_queue {
 #define LAST(a) ((a).buf[(TTY_BUF_SIZE-1)&((a).head-1)])
 #define FULL(a) (!LEFT(a))
 #define CHARS(a) (((a).head-(a).tail)&(TTY_BUF_SIZE-1))
+#ifdef _WIN32
+#define GETCH(queue,c) \
+	(void)(c=(queue).buf[(queue).tail],INC((queue).tail))
+#define PUTCH(c,queue) \
+	(void)((queue).buf[(queue).head]=(c),INC((queue).head))
+#else /* _WIN32 */
 #define GETCH(queue,c) \
 (void)({c=(queue).buf[(queue).tail];INC((queue).tail);})
 #define PUTCH(c,queue) \
 (void)({(queue).buf[(queue).head]=(c);INC((queue).head);})
+#endif /* _WIN32 */
 
 #define INTR_CHAR(tty) ((tty)->termios.c_cc[VINTR])
 #define QUIT_CHAR(tty) ((tty)->termios.c_cc[VQUIT])

@@ -26,11 +26,10 @@
 #include <asm/system.h>
 #include <asm/io.h>
 
-extern int end;
-extern void put_super(int);
-extern void invalidate_inodes(int);
-
-struct buffer_head *start_buffer = (struct buffer_head *)&end;
+extern int _end;
+extern void put_super(int dev);
+extern void invalidate_inodes(int dev);
+struct buffer_head *start_buffer = (struct buffer_head *)&_end;
 struct buffer_head *hash_table[NR_HASH];
 static struct buffer_head *free_list;
 static struct task_struct *buffer_wait = NULL;
@@ -211,7 +210,7 @@ struct buffer_head *getblk(int dev, int block)
 	struct buffer_head *tmp, *bh;
 
 repeat:
-	if ((bh = get_hash_table(dev, block)))
+	if (bh = get_hash_table(dev, block))
 		return bh;
 	tmp = free_list;
 	do {
@@ -283,12 +282,23 @@ struct buffer_head *bread(int dev, int block)
 	return NULL;
 }
 
+#ifdef _WIN32
+static __inline void COPYBLK(unsigned long from, unsigned long to)
+{
+__asm mov ecx, BLOCK_SIZE / 4
+	__asm mov	esi, from
+	__asm mov	edi, to
+	__asm cld
+	__asm rep	movsd
+}
+#else
 #define COPYBLK(from,to) \
 __asm__("cld\n\t" \
 	"rep\n\t" \
 	"movsl\n\t" \
 	::"c" (BLOCK_SIZE/4),"S" (from),"D" (to) \
 	)
+#endif /* _WIN32 */
 
 /*
  * bread_page reads four buffers into memory at the desired address. It's
@@ -303,7 +313,7 @@ void bread_page(unsigned long address, int dev, int b[4])
 
 	for (i = 0; i < 4; i++)
 		if (b[i]) {
-			if ((bh[i] = getblk(dev, b[i])))
+			if (bh[i] = getblk(dev, b[i]))
 				if (!bh[i]->b_uptodate)
 					ll_rw_block(READ, bh[i]);
 		} else
@@ -351,14 +361,14 @@ struct buffer_head *breada(int dev, int first, ...)
 void buffer_init(long buffer_end)
 {
 	struct buffer_head *h = start_buffer;
-	void *b;
+	char *b;
 	int i;
 
 	if (buffer_end == 1 << 20)
 		b = (void *)(640 * 1024);
 	else
 		b = (void *)buffer_end;
-	while ((b -= BLOCK_SIZE) >= ((void *)(h + 1))) {
+	while ((b -= BLOCK_SIZE) >= ((char *)(h + 1))) {
 		h->b_dev = 0;
 		h->b_dirt = 0;
 		h->b_count = 0;

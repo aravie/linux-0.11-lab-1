@@ -36,7 +36,11 @@ void math_emulate(long edi, long esi, long ebp, long sys_call_ret,
 
 void math_error(void)
 {
+#ifdef _WIN32
+	__asm	fnclex
+#else
 	__asm__("fnclex");
+#endif /* _WIN32 */
 	if (last_task_used_math)
 		last_task_used_math->signal |= 1 << (SIGFPE - 1);
 }

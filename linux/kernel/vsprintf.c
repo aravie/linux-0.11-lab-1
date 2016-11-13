@@ -32,10 +32,19 @@ static int skip_atoi(const char **s)
 #define SPECIAL	32		/* 0x */
 #define SMALL	64		/* use 'abcdef' instead of 'ABCDEF' */
 
+#ifdef _WIN32
+inline int do_div(unsigned int *n, int base)
+{
+	int __res = *n % base;
+	*n /= base;
+	return __res;
+}
+#else
 #define do_div(n,base) ({ \
 int __res; \
 __asm__("divl %4":"=a" (n),"=d" (__res):"0" (n),"1" (0),"r" (base)); \
 __res; })
+#endif /* _WIN32 */
 
 static char *number(char *str, int num, int base, int size, int precision,
 		    int type)
@@ -69,7 +78,11 @@ static char *number(char *str, int num, int base, int size, int precision,
 		tmp[i++] = '0';
 	else
 		while (num != 0)
+#ifdef _WIN32
+			tmp[i++] = digits[do_div(&num, base)];
+#else
 			tmp[i++] = digits[do_div(num, base)];
+#endif /* _WIN32 */
 	if (i > precision)
 		precision = i;
 	size -= precision;

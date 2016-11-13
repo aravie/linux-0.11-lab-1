@@ -47,8 +47,22 @@ static int seek = 0;
 
 extern unsigned char current_DOR;
 
+#ifdef _WIN32
+static __inline immoutb_p(long val, unsigned short port)
+{
+	__asm mov	eax, val
+	__asm mov	dx, port
+	__asm out	dx, al
+	__asm jmp	LN1
+LN1 :
+	__asm jmp	LN2
+LN2 :
+			;
+}
+#else
 #define immoutb_p(val,port) \
 __asm__("outb %0,%1\n\tjmp 1f\n1:\tjmp 1f\n1:"::"a" ((char) (val)),"i" (port))
+#endif /* _WIN32 */
 
 #define TYPE(x) ((x)>>2)
 #define DRIVE(x) ((x)&0x03)
@@ -161,14 +175,28 @@ repeat:
 	return 0;
 }
 
+#ifdef _WIN32
+static __inline copy_buffer(void *from, void *to)
+{
+	__asm mov	ecx, BLOCK_SIZE / 4
+	__asm mov	esi, from
+	__asm mov	edi, to
+	__asm cld
+	__asm rep	movsw
+}
+#else
 #define copy_buffer(from,to) \
 __asm__("cld ; rep ; movsl" \
 	::"c" (BLOCK_SIZE/4),"S" ((long)(from)),"D" ((long)(to)) \
 	)
+#endif /* _WIN32 */
 
 static void setup_DMA(void)
 {
 	long addr = (long)CURRENT->buffer;
+#ifdef _WIN32
+	char a;
+#endif /* _WIN32 */
 
 	cli();
 	if (addr >= 0x100000) {
@@ -176,29 +204,44 @@ static void setup_DMA(void)
 		if (command == FD_WRITE)
 			copy_buffer(CURRENT->buffer, tmp_floppy_area);
 	}
-/* mask DMA 2 */
+	/* mask DMA 2 */
 	immoutb_p(4 | 2, 10);
-/* output command byte. I don't know why, but everyone (minix, */
-/* sanches & canton) output this twice, first to 12 then to 11 */
+	/* output command byte. I don't know why, but everyone (minix, */
+	/* sanches & canton) output this twice, first to 12 then to 11 */
+#ifdef _WIN32
+	a = (char)((command == FD_READ) ? DMA_READ : DMA_WRITE);
+	__asm mov	al, a
+	__asm out	12, al
+	__asm jmp	LN1
+LN1 :
+	__asm jmp	LN2
+LN2 :
+	__asm out	11, al
+	__asm jmp	LN3
+LN3 :
+	__asm jmp	LN4
+LN4 :
+#else
 	__asm__("outb %%al,$12\n\tjmp 1f\n1:\tjmp 1f\n1:\t"
 		"outb %%al,$11\n\tjmp 1f\n1:\tjmp 1f\n1:"::"a"((char)
 							       ((command ==
 								 FD_READ) ?
 								DMA_READ :
 								DMA_WRITE)));
-/* 8 low bits of addr */
+#endif /* _WIN32 */
+	/* 8 low bits of addr */
 	immoutb_p(addr, 4);
 	addr >>= 8;
-/* bits 8-15 of addr */
+	/* bits 8-15 of addr */
 	immoutb_p(addr, 4);
 	addr >>= 8;
-/* bits 16-19 of addr */
+	/* bits 16-19 of addr */
 	immoutb_p(addr, 0x81);
-/* low 8 bits of count-1 (1024-1=0x3ff) */
+	/* low 8 bits of count-1 (1024-1=0x3ff) */
 	immoutb_p(0xff, 5);
-/* high 8 bits of count-1 */
+	/* high 8 bits of count-1 */
 	immoutb_p(3, 5);
-/* activate DMA 2 */
+	/* activate DMA 2 */
 	immoutb_p(0 | 2, 10);
 	sti();
 }
@@ -411,7 +454,11 @@ static void reset_floppy(void)
 	do_floppy = reset_interrupt;
 	outb_p(current_DOR & ~0x04, FD_DOR);
 	for (i = 0; i < 100; i++)
+#ifdef _WIN32
+		__asm nop;
+#else
 		__asm__("nop");
+#endif /* WIN32 */
 	outb(current_DOR, FD_DOR);
 	sti();
 }

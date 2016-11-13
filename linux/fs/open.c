@@ -4,7 +4,9 @@
  *  (C) 1991  Linus Torvalds
  */
 
-/* #include <string.h> */
+#ifdef _WIN32
+#include <string.h>
+#endif
 #include <errno.h>
 #include <fcntl.h>
 #include <sys/types.h>

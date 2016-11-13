@@ -25,10 +25,22 @@
 #define MAJOR_NR 3
 #include "blk.h"
 
+#ifdef _WIN32
+inline unsigned char CMOS_READ(unsigned short addr)
+{
+	unsigned char _v;
+
+	outb_p(0x80 | addr, 0x70);
+	_v = inb_p(0x71);
+
+	return _v;
+}
+#else
 #define CMOS_READ(addr) ({ \
 outb_p(0x80|addr,0x70); \
 inb_p(0x71); \
 })
+#endif /* WIN32 */
 
 /* Max read/write errors/sector */
 #define MAX_ERRORS	7
@@ -61,17 +73,37 @@ static struct hd_struct {
 } hd[5 * MAX_HD] = { {
 0, 0},};
 
+#ifdef _WIN32
+static __inline void port_read(unsigned short port, void *buf, int nr)
+{
+	__asm mov dx, port
+	__asm mov edi, buf
+	__asm mov ecx, nr
+	__asm cld
+	__asm rep insw
+}
+
+static __inline void port_write(unsigned short port, void *buf, int nr)
+{
+	__asm mov dx, port
+	__asm mov esi, buf
+	__asm mov ecx, nr
+	__asm cld
+	__asm rep outsw
+}
+#else
 #define port_read(port,buf,nr) \
 __asm__("cld;rep;insw"::"d" (port),"D" (buf),"c" (nr))
 
 #define port_write(port,buf,nr) \
 __asm__("cld;rep;outsw"::"d" (port),"S" (buf),"c" (nr))
+#endif /* _WIN32 */
 
 extern void hd_interrupt(void);
 extern void rd_load(void);
 
 /* This may be used only once, enforced by 'static int callable' */
-int sys_setup(void *BIOS)
+int sys_setup(char *BIOS)
 {
 	static int callable = 1;
 	int i, drive;
@@ -146,7 +178,7 @@ int sys_setup(void *BIOS)
 			printk("Bad partition table on drive %d\n\r", drive);
 			panic("");
 		}
-		p = 0x1BE + (void *)bh->b_data;
+		p = (struct partition *)(0x1BE + (char *)bh->b_data);
 		for (i = 1; i < 5; i++, p++) {
 			hd[i + 5 * drive].start_sect = p->start_sect;
 			hd[i + 5 * drive].nr_sects = p->nr_sects;
@@ -184,7 +216,11 @@ static void hd_out(unsigned int drive, unsigned int nsect, unsigned int sect,
 		   unsigned int head, unsigned int cyl, unsigned int cmd,
 		   void (*intr_addr) (void))
 {
+#ifdef _WIN32
+	register int port;
+#else
 	register int port asm("dx");
+#endif /* _WIN32 */
 
 	if (drive > 1 || head > 15)
 		panic("Trying to write bad sector");
@@ -305,18 +341,26 @@ void do_hd_request(void)
 	INIT_REQUEST;
 	dev = MINOR(CURRENT->dev);
 	block = CURRENT->sector;
-	if (dev >= 5 * NR_HD || block + 2 > hd[dev].nr_sects) {
+	if (dev >= 5 * (unsigned int)NR_HD
+	    || block + 2 > (unsigned int)hd[dev].nr_sects) {
 		end_request(0);
 		goto repeat;
 	}
 	block += hd[dev].start_sect;
 	dev /= 5;
+#ifdef _WIN32
+	sec = block % hd_info[dev].sect;
+	block /= hd_info[dev].sect;
+	head = block % hd_info[dev].head;
+	cyl = block / hd_info[dev].head;
+#else
 __asm__("divl %4": "=a"(block), "=d"(sec):"0"(block), "1"(0),
 		"r"(hd_info[dev].
 		    sect));
 __asm__("divl %4": "=a"(cyl), "=d"(head):"0"(block), "1"(0),
 		"r"(hd_info[dev].
 		    head));
+#endif /* _WIN32 */
 	sec++;
 	nsect = CURRENT->nr_sectors;
 	if (reset) {

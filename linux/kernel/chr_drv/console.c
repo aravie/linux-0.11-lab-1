@@ -104,6 +104,105 @@ static inline void set_origin(void)
 	sti();
 }
 
+#ifdef _WIN32
+static void scrup(void)
+{
+	unsigned long c, D, S;
+
+	if (video_type == VIDEO_TYPE_EGAC || video_type == VIDEO_TYPE_EGAM) {
+		if (!top && bottom == video_num_lines) {
+			origin += video_size_row;
+			pos += video_size_row;
+			scr_end += video_size_row;
+			if (scr_end > video_mem_end) {
+				c = (video_num_lines -
+				     1) * video_num_columns >> 1;
+				__asm mov ax, video_erase_char;
+				__asm mov ecx, c
+				__asm mov edi, video_mem_start
+				__asm mov esi, origin
+				__asm cld
+				__asm rep movsd
+				__asm mov ecx, video_num_columns
+				__asm rep stosw
+				scr_end -= origin - video_mem_start;
+				pos -= origin - video_mem_start;
+				origin = video_mem_start;
+			} else {
+				D = scr_end - video_size_row;
+			__asm mov ax, video_erase_char
+				__asm mov ecx, video_num_columns
+				__asm mov edi, D
+				__asm cld
+				__asm rep	stosw
+			}
+			set_origin();
+		}
+		else {
+			c = (bottom - top - 1) * video_num_columns >> 1;
+			D = origin + video_size_row * top;
+			S = origin + video_size_row * (top + 1);
+			__asm mov	ax, video_erase_char
+			__asm mov	ecx, c
+			__asm mov	edi, D
+			__asm mov	esi, S
+			__asm cld
+			__asm rep	movsd
+			__asm mov	ecx, video_num_columns
+			__asm rep	stosw
+		}
+	}
+	else		/* Not EGA/VGA */
+	{
+		c = (bottom - top - 1) * video_num_columns >> 1;
+		D = origin + video_size_row * top;
+		S = origin + video_size_row * (top + 1);
+__asm mov ax, video_erase_char
+		__asm mov ecx, c
+		__asm mov edi, D
+		__asm mov esi, S
+		__asm cld
+		__asm rep movsd
+		__asm mov ecx, video_num_columns
+		__asm rep	stosw
+	}
+}
+
+static void scrdown(void)
+{
+	unsigned long c, D, S;
+
+	if (video_type == VIDEO_TYPE_EGAC || video_type == VIDEO_TYPE_EGAM)
+	{
+		c = (bottom - top - 1) * video_num_columns >> 1;
+		D = origin + video_size_row * bottom - 4;
+		S = origin + video_size_row * (bottom - 1) - 4;
+		__asm mov	ax, video_erase_char
+		__asm mov	ecx, c
+		__asm mov	edi, D
+		__asm mov	esi, S
+		__asm std
+		__asm rep	movsd
+		__asm add	edi, 2	/* %edi has been decremented by 4 */
+		__asm mov	ecx, video_num_columns
+		__asm rep	stosw
+	}
+	else		/* Not EGA/VGA */
+	{
+		c = (bottom - top - 1) * video_num_columns >> 1;
+		D = origin + video_size_row * bottom - 4;
+		S = origin + video_size_row * (bottom - 1) - 4;
+		__asm mov	ax, video_erase_char
+		__asm mov	ecx, c
+		__asm mov	edi, D
+		__asm mov	esi, S
+		__asm std
+		__asm rep	movsd
+		__asm add	edi, 2	/* %edi has been decremented by 4 */
+		__asm rep	stosw
+	}
+}
+#else /* _WIN32 */
 static void scrup(void)
 {
 	if (video_type == VIDEO_TYPE_EGAC || video_type == VIDEO_TYPE_EGAM) {
@@ -185,6 +284,7 @@ static void scrdown(void)
 		    );
 	}
 }
+#endif /* _WIN32 */
 
 static void lf(void)
 {
@@ -242,10 +342,18 @@ static void csi_J(int par)
 	default:
 		return;
 	}
+#ifdef _WIN32
+	__asm mov ecx, count
+	__asm mov edi, start
+	__asm mov ax, video_erase_char
+	__asm cld
+	__asm rep	stosw
+#else
 	__asm__("cld\n\t"
 		"rep\n\t"
 		"stosw\n\t"::"c"(count), "D"(start), "a"(video_erase_char)
 	    );
+#endif /* _WIN32 */
 }
 
 static void csi_K(int par)
@@ -271,15 +379,23 @@ static void csi_K(int par)
 	default:
 		return;
 	}
+#ifdef _WIN32
+	__asm mov ecx, count
+	__asm mov edi, start
+	__asm mov ax, video_erase_char
+	__asm cld
+	__asm rep	stosw
+#else
 	__asm__("cld\n\t"
 		"rep\n\t"
 		"stosw\n\t"::"c"(count), "D"(start), "a"(video_erase_char)
 	    );
+#endif /* _WIN32 */
 }
 
 void csi_m(void)
 {
-	int i;
+	unsigned long i;
 
 	for (i = 0; i <= npar; i++)
 		switch (par[i]) {
@@ -326,7 +442,7 @@ static void respond(struct tty_struct *tty)
 
 static void insert_char(void)
 {
-	int i = x;
+	unsigned long i = x;
 	unsigned short tmp, old = video_erase_char;
 	unsigned short *p = (unsigned short *)pos;
 
@@ -353,7 +469,7 @@ static void insert_line(void)
 
 static void delete_char(void)
 {
-	int i;
+	unsigned long i;
 	unsigned short *p = (unsigned short *)pos;
 
 	if (x >= video_num_columns)
@@ -449,10 +565,14 @@ void con_write(struct tty_struct *tty)
 					pos -= video_size_row;
 					lf();
 				}
+#ifdef _WIN32
+				*(short *)pos = (attr << 8) + c;
+#else
 				__asm__("movb attr,%%ah\n\t"
 					"movw %%ax,%1\n\t"::"a"(c),
 					"m"(*(short *)pos)
 				    );
+#endif /* _WIN32 */
 				pos += 2;
 				x++;
 			} else if (c == 27)
@@ -503,7 +623,7 @@ void con_write(struct tty_struct *tty)
 				par[npar] = 0;
 			npar = 0;
 			state = 3;
-			if ((ques = (c == '?')))
+			if (ques = (c == '?'))
 				break;
 		case 3:
 			if (c == ';' && npar < NPAR - 1) {
@@ -631,7 +751,7 @@ void con_init(void)
 	video_num_columns = ORIG_VIDEO_COLS;
 	video_size_row = video_num_columns * 2;
 	video_num_lines = ORIG_VIDEO_LINES;
-	video_page = ORIG_VIDEO_PAGE;
+	video_page = (unsigned char)ORIG_VIDEO_PAGE;
 	video_erase_char = 0x0720;
 
 	if (ORIG_VIDEO_MODE == 7) {	/* Is this a monochrome display? */

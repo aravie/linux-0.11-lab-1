@@ -62,10 +62,18 @@ extern long startup_time;
  * bios-listing reading. Urghh.
  */
 
+#ifdef _WIN32
+static inline int CMOS_READ(unsigned char addr)
+{
+	outb_p(0x80 | addr, 0x70);
+	return inb_p(0x71);
+}
+#else
 #define CMOS_READ(addr) ({ \
 outb_p(0x80|addr,0x70); \
 inb_p(0x71); \
 })
+#endif /* _WIN32 */
 
 #define BCD_TO_BIN(val) ((val)=((val)&15) + ((val)>>4)*10)
 
@@ -106,6 +114,9 @@ void main(void)
  * enable them
  */
 	ROOT_DEV = ORIG_ROOT_DEV;
+#ifdef _WIN32
+	__asm	cld
+#endif /* _WIN32 */
 	drive_info = DRIVE_INFO;
 	memory_end = (1 << 20) + (EXT_MEM_K << 10);
 	memory_end &= 0xfffff000;

@@ -20,15 +20,26 @@
  * Changes by tytso to allow root device specification
  */
 
+#ifdef _WIN32
+#define _CRT_SECURE_NO_WARNINGS
+#define _CRT_NONSTDC_NO_DEPRECATE
+#endif /* _WIN32 */
+
 #include <stdio.h>		/* fprintf */
 #include <string.h>
 #include <stdlib.h>		/* contains exit */
 #include <sys/types.h>		/* unistd.h needs this */
 #include <sys/stat.h>
+#ifndef _WIN32
 #include <linux/fs.h>
 #include <unistd.h>		/* contains read/write */
+#endif /* ! _WIN32 */
 #include <fcntl.h>
+#ifdef _WIN32
+#include <io.h>
+#endif /* _WIN32 */
 
+#ifndef _WIN32
 /*
  * Changes by falcon<zhangjinw@gmail.com> to define MAJOR and MINOR for they
  * are not defined in current linux header file linux/fs.h,I copy it from
@@ -66,6 +77,14 @@
 #define SETUP_SECTS 4
 
 #define STRINGIFY(x) #x
+#endif /* !_WIN32 */
+
+#ifdef _WIN32
+#define FALSE               0
+#define TRUE                1
+
+typedef int BOOL;
+#endif /* _WIN32 */
 
 void die(char *str)
 {
@@ -77,6 +96,84 @@ void usage(void)
 {
 	die("Usage: build bootsect setup system [rootdev] [> image]");
 }
+
+#ifdef _WIN32
+BOOL fill(int c)
+{
+	char *buf = malloc(c);
+	BOOL result = (write(fileno(stdout), buf, c) == c);
+	free(buf);
+
+	return result;
+}
+
+BOOL exec(char *buf)
+{
+	char *mz = buf;
+	if (*((unsigned short *)mz) != 0x5A4D)
+		return FALSE;
+	char *pe = mz + *((unsigned int *)(mz + 0x3C));
+	if (*((unsigned short *)pe) != 0x4550)
+		return FALSE;
+	unsigned short len = *((unsigned short *)(pe + 0x06));
+	char *sh = pe + 0xF8;
+	unsigned int last = 0;
+	for (int i = 0; i < len; i++) {
+		char *base = sh + i * 0x28;
+		unsigned int addr = *((unsigned int *)(base + 0x0C));
+		unsigned int size = *((unsigned int *)(base + 0x10));
+		unsigned int data = *((unsigned int *)(base + 0x14));
+		fprintf(stderr, "%s\t0x%p\t0x%p\t0x%p\n", base, addr, data,
+			size);
+		if (len > 1) {
+			if (!fill(addr - last))
+				return FALSE;
+			last = addr + size;
+		}
+		if (write(fileno(stdout), buf + data, size) != size)
+			return FALSE;
+	}
+
+	return TRUE;
+}
+
+BOOL merge(char *filename)
+{
+	BOOL result = FALSE;
+	int id, len;
+	char *buf;
+
+	if ((id = open(filename, O_RDONLY | O_BINARY)) > 0) {
+		len = filelength(id);
+		fprintf(stderr, "%s\t%d\n", filename, len);
+		buf = malloc(len);
+		read(id, buf, len);
+		if (exec(buf))
+			result = TRUE;
+		free(buf);
+		close(id);
+	}
+
+	return result;
+}
+
+int main(int argc, char **argv)
+{
+	if (argc != 4)
+		usage();
+
+	setmode(fileno(stdout), O_BINARY);
+	if (!merge(argv[1]))
+		die("Merge 'bootsect' fail.");
+	if (!merge(argv[2]))
+		die("Merge 'setup' fail.");
+	if (!merge(argv[3]))
+		die("Merge 'system' fail.");
+
+	return 0;
+}
+
+#else /* _WIN32 */
 
 int main(int argc, char **argv)
 {
@@ -190,3 +287,4 @@ int main(int argc, char **argv)
 		die("System is too big");
 	return (0);
 }
+#endif /* _WIN32 */

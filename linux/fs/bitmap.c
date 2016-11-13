@@ -10,6 +10,70 @@
 #include <linux/sched.h>
 #include <linux/kernel.h>
 
+#ifdef _WIN32
+static __inline void clear_block(void *addr)
+{
+__asm mov edi, addr
+	__asm mov ecx, BLOCK_SIZE / 4
+	__asm xor eax, eax
+	__asm cld
+	__asm rep	stosd
+}
+
+static __inline int set_bit(int nr, void *addr)
+{
+	register int res;
+
+	__asm xor eax, eax
+	__asm mov edi, addr
+	__asm mov edx, nr
+	__asm bts DWORD PTR[edi], edx
+	__asm setb al
+	__asm mov res, eax
+
+	return res;
+}
+
+static __inline int clear_bit(int nr, void *addr)
+{
+	register int res;
+
+	__asm xor eax, eax
+	__asm mov edi, addr
+	__asm mov edx, nr
+	__asm btr DWORD PTR[edi], edx
+	__asm setnb al
+	__asm mov res, eax
+
+	return res;
+}
+
+static __inline int find_first_zero(void *addr)
+{
+	int __res;
+
+	__asm xor	ecx, ecx
+	__asm mov	esi, addr
+	__asm cld
+LN1 :
+	__asm lodsd
+	__asm not eax
+	__asm bsf	edx, eax
+	__asm je	LN2
+	__asm add	ecx, edx
+	__asm jmp	LN3
+LN2 :
+	__asm add	ecx, 32
+	__asm cmp	ecx, 8192
+	__asm jl	LN1
+LN3 :
+	__asm mov	__res, ecx
+
+	return __res;
+}
+
+#else /* _WIN32 */
+
 #define clear_block(addr) \
 __asm__ __volatile__ ("cld\n\t" \
 	"rep\n\t" \
@@ -43,6 +107,7 @@ __asm__ __volatile__ ("cld\n" \
 	"3:" \
 	:"=c" (__res):"c" (0),"S" (addr)); \
 __res;})
+#endif /* _WIN32 */
 
 void free_block(int dev, int block)
 {
@@ -83,7 +148,7 @@ int new_block(int dev)
 		panic("trying to get new block from nonexistant device");
 	j = 8192;
 	for (i = 0; i < 8; i++)
-		if ((bh = sb->s_zmap[i]))
+		if (bh = sb->s_zmap[i])
 			if ((j = find_first_zero(bh->b_data)) < 8192)
 				break;
 	if (i >= 8 || !bh || j >= 8192)
@@ -147,7 +212,7 @@ struct m_inode *new_inode(int dev)
 		panic("new_inode with unknown device");
 	j = 8192;
 	for (i = 0; i < 8; i++)
-		if ((bh = sb->s_imap[i]))
+		if (bh = sb->s_imap[i])
 			if ((j = find_first_zero(bh->b_data)) < 8192)
 				break;
 	if (!bh || j >= 8192 || j + i * 8192 > sb->s_ninodes) {
@@ -161,7 +226,7 @@ struct m_inode *new_inode(int dev)
 	inode->i_nlinks = 1;
 	inode->i_dev = dev;
 	inode->i_uid = current->euid;
-	inode->i_gid = current->egid;
+	inode->i_gid = (unsigned char)current->egid;
 	inode->i_dirt = 1;
 	inode->i_num = j + i * 8192;
 	inode->i_mtime = inode->i_atime = inode->i_ctime = CURRENT_TIME;

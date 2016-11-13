@@ -24,6 +24,114 @@ extern char *strerror(int errno);
  *		(C) 1991 Linus Torvalds
  */
 
+#ifdef _WIN32
+extern inline char *strcpy(char *dest, const char *src)
+{
+	__asm mov	edi, dest
+	__asm mov	esi, src
+	__asm cld
+LN1 :
+	__asm lodsb
+	__asm stosb
+	__asm test	al, al
+	__asm jne	LN1
+
+		return dest;
+}
+
+extern inline char *strncpy(char *dest, const char *src, int count)
+{
+	__asm mov	edi, dest
+	__asm mov	esi, src
+	__asm mov	ecx, count
+	__asm cld
+LN1 :
+	__asm dec	ecx
+	__asm js	LN2
+	__asm lodsb
+	__asm stosb
+	__asm test	al, al
+	__asm jne	LN1
+	__asm rep	stosb
+LN2 :
+
+			return dest;
+}
+
+extern inline int strcmp(const char *s1, const char *s2)
+{
+	register int __res;
+
+	__asm mov	edi, s1
+	__asm mov	esi, s2
+	__asm cld
+LN1 :
+	__asm lodsb
+	__asm scasb
+	__asm jne	LN2
+	__asm test	al, al
+	__asm jne	LN1
+	__asm xor	eax, eax
+	__asm jmp	LN3
+LN2 :
+	__asm mov	eax, 1
+	__asm jl	LN3
+	__asm neg	eax
+LN3 :
+	__asm mov	__res, eax
+
+	return __res;
+}
+
+extern inline char *strchr(const char *s, char c)
+{
+	register char * __res;
+
+	__asm mov	al, c
+	__asm mov	esi, s
+	__asm cld
+	__asm mov	ah, al
+LN1 :
+	__asm lodsb
+	__asm cmp	al, ah
+	__asm je	LN2
+	__asm test	al, al
+	__asm jne	LN1
+	__asm mov	esi, 1
+LN2 :
+	__asm mov	eax, esi
+	__asm dec	eax
+	__asm mov	__res, eax
+
+	return __res;
+}
+
+extern inline int strlen(const char * s)
+{
+	register int __res;
+	__asm mov	ecx, -1
+	__asm mov	edi, s
+	__asm xor	eax, eax
+	__asm cld
+	__asm repne	scasb
+	__asm not ecx
+	__asm dec	ecx
+	__asm mov	__res, ecx
+
+	return __res;
+}
+
+extern inline void * memset(void * s, char c, int count)
+{
+	__asm mov	edi, s
+	__asm mov	al, c
+	__asm mov	ecx, count
+	__asm cld
+	__asm rep	stosb
+
+	return s;
+}
+#else /* _WIN32 */
 extern inline char *strcpy(char *dest, const char *src)
 {
 	__asm__("cld\n"
@@ -231,5 +339,6 @@ static inline void *memset(void *s, char c, int count)
 	    );
 	return s;
 }
+#endif /* _WIN32 */
 
 #endif

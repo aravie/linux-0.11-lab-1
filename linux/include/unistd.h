@@ -130,6 +130,56 @@
 #define __NR_setreuid	70
 #define __NR_setregid	71
 
+#ifdef _WIN32
+#define _syscall0(type, name) \
+	type name() \
+	{ \
+	long __res; \
+	{ \
+	__asm mov	eax, __NR_##name \
+	__asm int	0x80 \
+	__asm mov	__res, eax \
+	} \
+	if (__res >= 0) \
+	return (type)__res; \
+	errno = -__res; \
+	return -1; \
+	}
+
+#define _syscall1(type,name,atype,a) \
+	type name(atype a) \
+	{ \
+	long __res; \
+	{ \
+	__asm mov	eax, __NR_##name \
+	__asm mov	ebx, a \
+	__asm int	0x80 \
+	__asm mov	__res, eax \
+	} \
+	if (__res >= 0) \
+	return (type)__res; \
+	errno = -__res; \
+	return -1; \
+	}
+
+#define _syscall3(type,name,atype,a,btype,b,ctype,c) \
+	type name(atype a, btype b, ctype c) \
+	{ \
+	long __res; \
+	{ \
+	__asm mov	eax, __NR_##name \
+	__asm mov	ebx, a \
+	__asm mov	ecx, b \
+	__asm mov	edx, c \
+	__asm int	0x80 \
+	__asm mov	__res, eax \
+	} \
+	if (__res >= 0) \
+	return (type)__res; \
+	errno = -__res; \
+	return -1; \
+	}
+#else /* _WIN32 */
 #define _syscall0(type,name) \
 type name(void) \
 { \
@@ -181,6 +231,7 @@ if (__res>=0) \
 errno=-__res; \
 return -1; \
 }
+#endif /* _WIN32 */
 
 #endif /* __LIBRARY__ */
 

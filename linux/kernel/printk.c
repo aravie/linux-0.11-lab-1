@@ -26,7 +26,16 @@ int printk(const char *fmt, ...)
 	va_start(args, fmt);
 	i = vsprintf(buf, fmt, args);
 	va_end(args);
-__asm__("push %%fs\n\t" "push %%ds\n\t" "pop %%fs\n\t" "pushl %0\n\t" "pushl $buf\n\t" "pushl $0\n\t" "call tty_write\n\t" "addl $8,%%esp\n\t" "popl %0\n\t" "pop %%fs"::"r"(i):"ax", "cx",
-		"dx");
+#ifdef _WIN32
+	__asm push	fs
+	__asm push	ds
+	__asm pop	fs
+	tty_write(0, buf, i);
+	__asm pop	fs
+#else
+	__asm__("push %%fs\n\t" "push %%ds\n\t" "pop %%fs\n\t" "pushl %0\n\t" "pushl $buf\n\t" "pushl $0\n\t" "call tty_write\n\t" "addl $8,%%esp\n\t" "popl %0\n\t" "pop %%fs"::"r"(i):"ax", "cx",
+			"dx");
+#endif /* _WIN32 */
+
 	return i;
 }

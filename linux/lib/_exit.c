@@ -7,7 +7,16 @@
 #define __LIBRARY__
 #include <unistd.h>
 
+#ifdef _WIN32
+volatile void _exit(int exit_code)
+{
+	__asm mov eax, __NR_exit
+	__asm mov ebx, exit_code
+	__asm int 0x80
+}
+#else
 volatile void _exit(int exit_code)
 {
 	__asm__("int $0x80"::"a"(__NR_exit), "b"(exit_code));
 }
+#endif /* _WIN32 */

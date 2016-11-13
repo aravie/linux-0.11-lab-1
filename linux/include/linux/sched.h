@@ -112,6 +112,32 @@ struct task_struct {
  *  INIT_TASK is used to set up the first task table, touch at
  * your own risk!. Base=0, limit=0x9ffff (=640kB)
  */
+#ifdef _WIN32
+#define INIT_TASK \
+	/* */			{ \
+	/* state etc */		0, 15, 15, \
+	/* signals */		0, { { 0, }, }, 0, \
+	/* ec,brk... */		0, 0, 0, 0, 0, 0, \
+	/* pid etc.. */		0, -1, 0, 0, 0, \
+	/* uid etc */		0, 0, 0, 0, 0, 0, \
+	/* alarm */			0, 0, 0, 0, 0, 0, \
+	/* math */			0, \
+	/* fs info */		-1, 0022, NULL, NULL, NULL, 0, \
+	/* filp */			{ NULL, }, \
+	/* */				{ \
+	/* */					{ 0, 0 }, \
+	/* ldt */				{ 0x9f, 0xc0fa00 }, \
+	/* */					{ 0x9f, 0xc0f200 }, \
+	/* */				}, \
+	/* */				{ \
+	/* tss */				0, PAGE_SIZE + (long)&init_task, 0x10, 0, 0, 0, 0, (long)&pg_dir, \
+	/* */					0, 0, 0, 0, 0, 0, 0, 0, \
+	/* */					0, 0, 0x17, 0x17, 0x17, 0x17, 0x17, 0x17, \
+	/* */					_LDT(0), 0x80000000, \
+	/* */					{ 0, } \
+	/* */				} \
+	/* */			}
+#else /* _WIN32 */
 #define INIT_TASK \
 /* state etc */	{ 0,15,15, \
 /* signals */	0,{{},},0, \
@@ -134,6 +160,7 @@ struct task_struct {
 		{} \
 	}, \
 }
+#endif /* _WIN32 */
 
 extern struct task_struct *task[NR_TASKS];
 extern struct task_struct *last_task_used_math;
@@ -156,6 +183,92 @@ extern void wake_up(struct task_struct **p);
 #define FIRST_LDT_ENTRY (FIRST_TSS_ENTRY+1)
 #define _TSS(n) ((((unsigned long) n)<<4)+(FIRST_TSS_ENTRY<<3))
 #define _LDT(n) ((((unsigned long) n)<<4)+(FIRST_LDT_ENTRY<<3))
+
+#ifdef _WIN32
+static inline void ltr(short n)
+{
+	short a = _TSS(n);
+
+	__asm mov	ax, a
+	__asm ltr	ax
+}
+
+static inline void lldt(short n)
+{
+	short a = _LDT(n);
+
+	__asm mov	ax, a
+	__asm lldt	ax
+}
+
+#define str(n) \
+	__asm xor	eax, eax \
+	__asm str	ax \
+	__asm sub	eax, FIRST_TSS_ENTRY << 3 \
+	__asm shr	eax, 4 \
+	__asm mov	n, eax
+
+/*
+*	switch_to(n) should switch tasks to task nr n, first
+* checking that n isn't the current task, in which case it does nothing.
+* This also clears the TS-flag if the task we switched to has used
+* tha math co-processor latest.
+*/
+static inline void switch_to(int n)
+{
+	struct
+	{
+		long a, b;
+	} __tmp;
+
+	if (task[n] == current) return;
+	__tmp.b = _TSS(n);
+	current = task[n];
+	__asm jmp	FWORD PTR __tmp
+	if (task[n] == last_task_used_math)
+		__asm clts
+}
+
+static inline _set_base(char *addr, unsigned long base)
+{
+	*((short*)(addr + 2)) = base & 0xFFFF;
+	*(addr + 4) = (base >> 16) & 0xFF;
+	*(addr + 7) = (char)(base >> 24);
+}
+
+static inline _set_limit(char *addr, unsigned long limit)
+{
+	*(short*)addr = limit & 0xFFFF;
+	*(addr + 6) = (*(addr + 6) & 0xF0) | ((limit >> 16) & 0xFF);
+}
+
+#define set_base(ldt,base) _set_base(((char *)&(ldt)), base )
+#define set_limit(ldt,limit) _set_limit( ((char *)&(ldt)), (limit-1)>>12 )
+
+static inline unsigned long _get_base(unsigned char *addr)
+{
+	unsigned long __base;
+
+	__base = (*(addr + 7) << 24) + (*(addr + 4) << 16) + *(unsigned short*)(addr + 2);
+
+	return __base;
+}
+
+#define get_base(ldt) _get_base( ((char *)&(ldt)) )
+
+static inline unsigned long get_limit(int segment)
+{
+	unsigned long __limit;
+
+	__asm lsl	eax, segment
+	__asm inc	eax
+	__asm mov	__limit, eax
+
+	return __limit;
+}
+
+#else /* _WIN32 */
+
 #define ltr(n) __asm__("ltr %%ax"::"a" (_TSS(n)))
 #define lldt(n) __asm__("lldt %%ax"::"a" (_LDT(n)))
 #define str(n) \
@@ -246,5 +359,6 @@ __asm__("movb %3,%%dh\n\t" "movb %2,%%dl\n\t" "shll $16,%%edx\n\t" "movw %1,%%dx
 unsigned long __limit; \
 __asm__("lsll %1,%0\n\tincl %0":"=r" (__limit):"r" (segment)); \
 __limit;})
+#endif /* _WIN32 */
 
 #endif

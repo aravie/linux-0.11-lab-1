@@ -243,7 +243,7 @@ int tty_read(unsigned channel, char *buf, int nr)
 	minimum = tty->termios.c_cc[VMIN];
 	if (time && !minimum) {
 		minimum = 1;
-		if ((flag = (!oldalarm || time + jiffies < oldalarm)))
+		if (flag = (!oldalarm || time + jiffies < oldalarm))
 			current->alarm = time + jiffies;
 	}
 	if (minimum > nr)
@@ -274,7 +274,7 @@ int tty_read(unsigned channel, char *buf, int nr)
 			}
 		} while (nr > 0 && !EMPTY(tty->secondary));
 		if (time && !L_CANON(tty)) {
-			if ((flag = (!oldalarm || time + jiffies < oldalarm)))
+			if (flag = (!oldalarm || time + jiffies < oldalarm))
 				current->alarm = time + jiffies;
 			else
 				current->alarm = oldalarm;

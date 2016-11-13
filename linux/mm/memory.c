@@ -22,7 +22,9 @@
 
 #include <signal.h>
 
+#ifndef _WIN32
 #include <asm/system.h>
+#endif /* !_WIN32 */
 
 #include <linux/sched.h>
 #include <linux/head.h>
@@ -36,8 +38,14 @@ static inline volatile void oom(void)
 	do_exit(SIGSEGV);
 }
 
+#ifdef _WIN32
+#define invalidate() \
+	__asm xor	eax, eax \
+	__asm mov	cr3, eax
+#else
 #define invalidate() \
 __asm__("movl %%eax,%%cr3"::"a" (0))
+#endif /* _WIN32 */
 
 /* these are not to be changed without changing head.s etc */
 #define LOW_MEM 0x100000
@@ -47,12 +55,21 @@ __asm__("movl %%eax,%%cr3"::"a" (0))
 #define USED 100
 
 #define CODE_SPACE(addr) ((((addr)+4095)&~4095) < \
-current->start_code + current->end_code)
+	current->start_code + current->end_code)
 
-static long HIGH_MEMORY = 0;
+static unsigned long HIGH_MEMORY = 0;
 
+#ifdef _WIN32
+#define copy_page(from, to) \
+	__asm mov	esi, from \
+	__asm mov	edi, to \
+	__asm mov	ecx, 1024 \
+	__asm cld \
+	__asm rep	movsd
+#else
 #define copy_page(from,to) \
 __asm__("cld ; rep ; movsl"::"S" (from),"D" (to),"c" (1024))
+#endif /* _WIN32 */
 
 static unsigned char mem_map[PAGING_PAGES] = { 0, };
 
@@ -60,6 +77,32 @@ static unsigned char mem_map[PAGING_PAGES] = { 0, };
  * Get physical address of first (actually last :-) free page, and mark it
  * used. If no free pages left, return 0.
  */
+#ifdef _WIN32
+unsigned long get_free_page(void)
+{
+	register unsigned long __res;
+	void *D = mem_map + PAGING_PAGES - 1;
+
+	__asm xor eax, eax
+	__asm mov edi, D
+	__asm mov ecx, PAGING_PAGES
+	__asm std
+	__asm repne scasb
+	__asm jne LN1
+	__asm mov 1[edi], 1
+	__asm sal ecx, 12
+	__asm add ecx, LOW_MEM
+	__asm mov edx, ecx
+	__asm mov ecx, 1024
+	__asm lea edi, 4092[edx];
+	__asm rep stosd
+	__asm mov eax, edx
+LN1:
+	__asm mov __res, eax
+
+	return __res;
+}
+#else
 unsigned long get_free_page(void)
 {
 	register unsigned long __res asm("ax");
@@ -70,6 +113,7 @@ __asm__("std ; repne ; scasb\n\t" "jne 1f\n\t" "movb $1,1(%%edi)\n\t" "sall $12,
 	    );
 	return __res;
 }
+#endif /* _WIN32 */
 
 /*
  * Free a page of memory at physical address 'addr'. Used by
@@ -308,7 +352,7 @@ static int try_to_share(unsigned long address, struct task_struct *p)
 		return 0;
 	to = *(unsigned long *)to_page;
 	if (!(to & 1)) {
-		if ((to = get_free_page()))
+		if (to = get_free_page())
 			*(unsigned long *)to_page = to | 7;
 		else
 			oom();
