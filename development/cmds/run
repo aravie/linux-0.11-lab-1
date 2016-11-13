@@ -1,0 +1,26 @@
+#!/bin/sh
+export LINUX_LAB_PATH=$PWD/../..
+
+if [ "$1" ] && [ "$1" = "m" ] ; then
+	cd $LINUX_LAB_PATH/linux
+	make clean
+	make
+	cp -f Image $LINUX_LAB_PATH/out
+fi
+
+if [ ! -e "$LINUX_LAB_PATH/out/rootfs/unmounted" ]; then
+	echo umount first
+	sudo umount $LINUX_LAB_PATH/out/rootfs
+	if [ "$?" != "0" ]; then
+		exit
+	fi
+fi
+
+# `getconf LONG_BIT` works better than `uname -a`
+if [ `getconf LONG_BIT` = "64" ]
+then
+	bochs -q -f $LINUX_LAB_PATH/device/generic/bochs/linux-amd64.bxrc
+else
+	$OSLAB_PATH/bochs/bochs-gdb -q -f $LINUX_LAB_PATH/device/generic/bochs/linux-i386.bxrc
+fi
+
