@@ -114,3 +114,13 @@ all.config
 
 # Kdevelop4
 *.kdev4
+
+#
+# Old Linux
+#
+Image
+boot/bootsect
+boot/setup
+tools/build
+tools/system
+

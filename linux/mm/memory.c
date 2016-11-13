@@ -52,7 +52,7 @@ current->start_code + current->end_code)
 static long HIGH_MEMORY = 0;
 
 #define copy_page(from,to) \
-__asm__("cld ; rep ; movsl"::"S" (from),"D" (to),"c" (1024):"cx","di","si")
+__asm__("cld ; rep ; movsl"::"S" (from),"D" (to),"c" (1024))
 
 static unsigned char mem_map[PAGING_PAGES] = { 0, };
 
@@ -67,7 +67,7 @@ unsigned long get_free_page(void)
 __asm__("std ; repne ; scasb\n\t" "jne 1f\n\t" "movb $1,1(%%edi)\n\t" "sall $12,%%ecx\n\t" "addl %2,%%ecx\n\t" "movl %%ecx,%%edx\n\t" "movl $1024,%%ecx\n\t" "leal 4092(%%edx),%%edi\n\t" "rep ; stosl\n\t" "movl %%edx,%%eax\n" "1:":"=a"(__res)
 :		"0"(0), "i"(LOW_MEM), "c"(PAGING_PAGES),
 		"D"(mem_map + PAGING_PAGES - 1)
-:		"di", "cx", "dx");
+	    );
 	return __res;
 }
 
@@ -307,11 +307,12 @@ static int try_to_share(unsigned long address, struct task_struct *p)
 	if (phys_addr >= HIGH_MEMORY || phys_addr < LOW_MEM)
 		return 0;
 	to = *(unsigned long *)to_page;
-	if (!(to & 1))
-		if (to = get_free_page())
+	if (!(to & 1)) {
+		if ((to = get_free_page()))
 			*(unsigned long *)to_page = to | 7;
 		else
 			oom();
+	}
 	to &= 0xfffff000;
 	to_page = to + ((address >> 10) & 0xffc);
 	if (1 & *(unsigned long *)to_page)
