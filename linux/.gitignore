@@ -124,3 +124,9 @@ boot/setup
 tools/build
 tools/system
 
+# Comment
+*swp
+*out
+/comment
+/tags
+

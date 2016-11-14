@@ -178,12 +178,7 @@ extern inline char *strtok(char *s, const char *ct)
 	return __res;
 }
 
-/*
- * Changes by falcon<zhangjinw@gmail.com>, the original return value is static
- * inline ... it can not be called by other functions in another files.
- */
-
-extern inline void *memcpy(void *dest, const void *src, int n)
+static inline void *memcpy(void *dest, const void *src, int n)
 {
 	__asm__("cld\n\t" "rep\n\t" "movsb"::"c"(n), "S"(src), "D"(dest)
 	    );

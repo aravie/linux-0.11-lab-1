@@ -7,8 +7,8 @@
 #define _POSIX_CHOWN_RESTRICTED	/* only root can do a chown (I think..) */
 #define _POSIX_NO_TRUNC		/* no pathname truncation (but see in kernel) */
 #define _POSIX_VDISABLE '\0'	/* character to disable things like ^C */
-				/*#define _POSIX_SAVED_IDS *//* we'll get to this yet */
-				/*#define _POSIX_JOB_CONTROL *//* we aren't there quite yet. Soon hopefully */
+							     /*#define _POSIX_SAVED_IDS *//* we'll get to this yet */
+							       /*#define _POSIX_JOB_CONTROL *//* we aren't there quite yet. Soon hopefully */
 
 #define STDIN_FILENO	0
 #define STDOUT_FILENO	1

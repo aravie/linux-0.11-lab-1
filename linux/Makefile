@@ -10,8 +10,8 @@ LD86	=ld86 -0
 AS	=as
 LD	=ld
 LDFLAGS	=-m elf_i386 -Ttext 0 -e startup_32
-CC	=gcc-3.4 -march=i386 $(RAMDISK)
-CFLAGS	=-m32 -g -Wall -O2 -fomit-frame-pointer
+CC	=gcc -mcpu=i386 $(RAMDISK)
+CFLAGS	=-Wall -O2 -fomit-frame-pointer 
 
 CPP	=cpp -nostdinc -Iinclude
 
@@ -20,7 +20,7 @@ CPP	=cpp -nostdinc -Iinclude
 # This can be either FLOPPY, /dev/xxxx or empty, in which case the
 # default of /dev/hd6 is used by 'build'.
 #
-ROOT_DEV= #FLOPPY
+ROOT_DEV= #FLOPPY 
 
 ARCHIVES=kernel/kernel.o mm/mm.o fs/fs.o
 DRIVERS =kernel/blk_drv/blk_drv.a kernel/chr_drv/chr_drv.a
@@ -39,27 +39,20 @@ LIBS	=lib/lib.a
 all:	Image
 
 Image: boot/bootsect boot/setup tools/system tools/build
-	cp -f tools/system system.tmp
-	strip system.tmp
-	objcopy -O binary -R .note -R .comment system.tmp tools/kernel
+	objcopy -O binary -R .note -R .comment tools/system tools/kernel
 	tools/build boot/bootsect boot/setup tools/kernel $(ROOT_DEV) > Image
-	rm system.tmp
 	rm tools/kernel -f
 	sync
 
 disk: Image
 	dd bs=8192 if=Image of=/dev/fd0
 
-BootImage: boot/bootsect boot/setup tools/build
-	tools/build boot/bootsect boot/setup none $(ROOT_DEV) > Image
-	sync
-
 tools/build: tools/build.c
-	gcc $(CFLAGS) \
+	$(CC) $(CFLAGS) \
 	-o tools/build tools/build.c
 
 boot/head.o: boot/head.s
-	gcc-3.4 -m32 -g -I./include -traditional -c boot/head.s
+	gcc -I./include -traditional -c boot/head.s
 	mv head.o boot/
 
 tools/system:	boot/head.o init/main.o \
@@ -69,28 +62,28 @@ tools/system:	boot/head.o init/main.o \
 	$(DRIVERS) \
 	$(MATH) \
 	$(LIBS) \
-	-o tools/system
-	nm tools/system | grep -v '\(compiled\)\|\(\.o$$\)\|\( [aU] \)\|\(\.\.ng$$\)\|\(LASH[RL]DI\)'| sort > System.map
+	-o tools/system 
+	nm tools/system | grep -v '\(compiled\)\|\(\.o$$\)\|\( [aU] \)\|\(\.\.ng$$\)\|\(LASH[RL]DI\)'| sort > System.map 
 
-kernel/math/math.a: FORCE
+kernel/math/math.a:
 	(cd kernel/math; make)
 
-kernel/blk_drv/blk_drv.a: FORCE
+kernel/blk_drv/blk_drv.a:
 	(cd kernel/blk_drv; make)
 
-kernel/chr_drv/chr_drv.a: FORCE
+kernel/chr_drv/chr_drv.a:
 	(cd kernel/chr_drv; make)
 
-kernel/kernel.o: FORCE
+kernel/kernel.o:
 	(cd kernel; make)
 
-mm/mm.o: FORCE
+mm/mm.o:
 	(cd mm; make)
 
-fs/fs.o: FORCE
+fs/fs.o:
 	(cd fs; make)
 
-lib/lib.a: FORCE
+lib/lib.a:
 	(cd lib; make)
 
 boot/setup: boot/setup.s
@@ -125,9 +118,6 @@ dep:
 	(cd fs; make dep)
 	(cd kernel; make dep)
 	(cd mm; make dep)
-
-# Force make run into subdirectories even no changes on source
-FORCE:
 
 ### Dependencies:
 init/main.o: init/main.c include/unistd.h include/sys/stat.h \
