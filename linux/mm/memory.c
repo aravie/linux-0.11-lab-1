@@ -28,9 +28,9 @@
 #include <linux/head.h>
 #include <linux/kernel.h>
 
-volatile void do_exit(long code);
+void do_exit(long code);
 
-static inline volatile void oom(void)
+static inline void oom(void)
 {
 	printk("out of memory\n\r");
 	do_exit(SIGSEGV);
@@ -64,7 +64,7 @@ unsigned long get_free_page(void)
 {
 	register unsigned long __res asm("ax");
 
-__asm__("std ; repne ; scasb\n\t" "jne 1f\n\t" "movb $1,1(%%edi)\n\t" "sall $12,%%ecx\n\t" "addl %2,%%ecx\n\t" "movl %%ecx,%%edx\n\t" "movl $1024,%%ecx\n\t" "leal 4092(%%edx),%%edi\n\t" "rep ; stosl\n\t" "movl %%edx,%%eax\n" "1:":"=a"(__res)
+__asm__("std ; repne ; scasb\n\t" "jne 1f\n\t" "movb $1,1(%%edi)\n\t" "sall $12,%%ecx\n\t" "addl %2,%%ecx\n\t" "movl %%ecx,%%edx\n\t" "movl $1024,%%ecx\n\t" "leal 4092(%%edx),%%edi\n\t" "rep ; stosl\n\t" " movl %%edx,%%eax\n" "1: cld":"=a"(__res)
 :		"0"(0), "i"(LOW_MEM), "c"(PAGING_PAGES),
 		"D"(mem_map + PAGING_PAGES - 1)
 	    );

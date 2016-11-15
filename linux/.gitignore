@@ -124,3 +124,10 @@ boot/setup
 tools/build
 tools/system
 
+#
+# Misc
+#
+Thumbs.db
+*.log
+*.bak
+.DS_Store

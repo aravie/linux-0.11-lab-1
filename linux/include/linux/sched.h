@@ -33,7 +33,7 @@ extern void sched_init(void);
 extern void schedule(void);
 extern void trap_init(void);
 #ifndef PANIC
-volatile void panic(const char *str);
+void panic(const char *str);
 #endif
 extern int tty_write(unsigned minor, char *buf, int count);
 
