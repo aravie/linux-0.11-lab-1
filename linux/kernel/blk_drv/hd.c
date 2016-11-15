@@ -48,8 +48,8 @@ inb_p(0x71); \
 
 static void recal_intr(void);
 
-static int recalibrate = 1;
-static int reset = 1;
+static int recalibrate = 0;
+static int reset = 0;
 
 /*
  *  This struct defines the HD's and their types.
@@ -194,9 +194,9 @@ int sys_setup(char *BIOS)
 
 static int controller_ready(void)
 {
-	int retries = 10000;
+	int retries = 100000;
 
-	while (--retries && (inb_p(HD_STATUS) & 0xc0) != 0x40) ;
+	while (--retries && (inb_p(HD_STATUS) & 0x80)) ;
 	return (retries);
 }
 

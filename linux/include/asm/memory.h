@@ -19,11 +19,11 @@ static __inline void* memcpy(void *dest, void *src, int n)
 	return _res;
 }
 #else
-#define memcpy(dest,src,n) ({ \
-void * _res = dest; \
-__asm__ ("cld;rep;movsb" \
-	::"D" ((long)(_res)),"S" ((long)(src)),"c" ((long) (n)) \
-	); \
-_res; \
-})
+//#define memcpy(dest,src,n) ({ \
+//void * _res = dest; \
+//__asm__ __volatile__ ("cld;rep;movsb" \
+//      ::"D" ((long)(_res)),"S" ((long)(src)),"c" ((long) (n)) \
+//      ); \
+//_res; \
+//})
 #endif /* _WIN32 */

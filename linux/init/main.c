@@ -20,6 +20,10 @@
  * won't be any messing with the stack from main(), but we define
  * some others too.
  */
+#ifndef _WIN32
+static inline fork(void) __attribute__ ((always_inline));
+static inline pause(void) __attribute__ ((always_inline));
+#endif /* !_WIN32 */
 static inline _syscall0(int, fork)
 static inline _syscall0(int, pause)
 static inline _syscall1(int, setup, void *, BIOS)
@@ -113,6 +117,7 @@ void main(void)
  * Interrupts are still disabled. Do necessary setups, then
  * enable them
  */
+
 	ROOT_DEV = ORIG_ROOT_DEV;
 #ifdef _WIN32
 	__asm	cld

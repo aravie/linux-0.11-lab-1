@@ -6,22 +6,29 @@
 # unless it's something special (ie not a .c file).
 #
 
-AR	=ar
-AS	=as --32
-LD	=ld
-LDFLAGS	=-m elf_i386 -x
-CC	=gcc-3.4 -march=i386
-CFLAGS	=-m32 -g -Wall -O -fstrength-reduce -fomit-frame-pointer \
-	-finline-functions -nostdinc -I../include
-CPP	=gcc-3.4 -E -nostdinc -I../include
+include ../Makefile.header
+
+LDFLAGS	+= -r
+
+# NOTE!: do not try to add -On to CFLAGS with gcc4.x, which will optimize the
+# memcpy function a lot to let the kernel not work, for fixing this problem,
+# please refer to glibc and rewrite the memcpy in include/string.h, or just not
+# use any -On options with gcc 4.x when compiling it. in fact, we only can not
+# use -On with gcc4.x to compile fork.c, but after that you need to isolate the
+# compling procedure of it, it's not good too. for playing with linux-0.11, we
+# just have fun, have no much concerning about the performance.
+
+CFLAGS	+= -I../include
+
+CPP	+= -I../include
 
 .c.s:
-	$(CC) $(CFLAGS) \
+	@$(CC) $(CFLAGS) \
 	-S -o $*.s $<
 .s.o:
-	$(AS) -o $*.o $<
+	@$(AS) -o $*.o $<
 .c.o:
-	$(CC) $(CFLAGS) \
+	@$(CC) $(CFLAGS) \
 	-c -o $*.o $<
 
 OBJS  = sched.o system_call.o traps.o asm.o fork.o \
@@ -29,23 +36,20 @@ OBJS  = sched.o system_call.o traps.o asm.o fork.o \
 	signal.o mktime.o
 
 kernel.o: $(OBJS)
-	$(LD) -m elf_i386 -r -o kernel.o $(OBJS)
-	sync
+	@$(LD) $(LDFLAGS) -o kernel.o $(OBJS)
+	@sync
 
 clean:
-	rm -f core *.o *.a tmp_make keyboard.s
-	for i in *.c;do rm -f `basename $$i .c`.s;done
-	(cd chr_drv; make clean)
-	(cd blk_drv; make clean)
-	(cd math; make clean)
+	@rm -f core *.o *.a tmp_make keyboard.s
+	@for i in *.c;do rm -f `basename $$i .c`.s;done
+	@for i in chr_drv blk_drv math; do make clean -C $$i; done
 
 dep:
-	sed '/\#\#\# Dependencies/q' < Makefile > tmp_make
-	(for i in *.c;do echo -n `echo $$i | sed 's,\.c,\.s,'`" "; \
+	@sed '/\#\#\# Dependencies/q' < Makefile > tmp_make
+	@(for i in *.c;do echo -n `echo $$i | sed 's,\.c,\.s,'`" "; \
 		$(CPP) -M $$i;done) >> tmp_make
-	cp tmp_make Makefile
-	(cd chr_drv; make dep)
-	(cd blk_drv; make dep)
+	@cp tmp_make Makefile
+	@for i in chr_drv blk_drv; do make dep -C $$i; done
 
 ### Dependencies:
 exit.s exit.o: exit.c ../include/errno.h ../include/signal.h \

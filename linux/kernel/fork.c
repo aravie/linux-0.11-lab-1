@@ -10,6 +10,9 @@
  * Fork is rather simple, once you get the hang of it, but the memory
  * management can be a bitch. See 'mm/mm.c': 'copy_page_tables()'
  */
+#ifndef _WIN32
+#include <string.h>
+#endif /* !_WIN32 */
 #include <errno.h>
 
 #include <linux/sched.h>
@@ -84,6 +87,9 @@ int copy_process(int nr, long ebp, long edi, long esi, long gs, long none,
 #ifdef _WIN32
 	__asm	cld
 #endif /* _WIN32 */
+
+	// NOTE!: the following statement now work with gcc 4.3.2 now, and you
+	// must compile _THIS_ memcpy without no -O of gcc.#ifndef GCC4_3
 	*p = *current;		/* NOTE! this doesn't copy the supervisor stack */
 	p->state = TASK_UNINTERRUPTIBLE;
 	p->pid = last_pid;
