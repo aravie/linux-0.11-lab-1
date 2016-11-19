@@ -16,11 +16,13 @@ The old Linux kernel source ver 0.11 which has been tested under modern Linux, M
 
     $ make help		// get help
     $ make
-    $ make bochs-debug
+    $ make qemu-debug
     $ gdb tools/system
     (gdb) target remote :1234
     (gdb) b _main
     (gdb) c
+
+We can debug it with Eclipse, just follow steps on: `docs/src/images/ide/eclipse`.
 
 ##2. Build on Mac OS X (Not tested)
 

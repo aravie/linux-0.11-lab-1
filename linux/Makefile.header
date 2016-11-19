@@ -6,7 +6,7 @@ ifeq ($(UNAME), Linux)
 	#LDFLAGS = -m elf_i386 -x 
 	LDFLAGS = -m elf_i386
 	CC	= gcc
-	CFLAGS  = -m32 -fno-builtin -fno-stack-protector -fomit-frame-pointer -fstrength-reduce -fno-leading-underscore #-Wall
+	CFLAGS  = -m32 -fno-builtin -fno-stack-protector -fomit-frame-pointer -fstrength-reduce -fno-leading-underscore -g #-Wall
 
 	CPP	= cpp -nostdinc
 	AR	= ar
@@ -21,7 +21,7 @@ ifeq ($(UNAME), CYGWIN)
 	LD	= ld
 	LDFLAGS = -m i386pe
 	CC	= gcc
-	CFLAGS  = -m32 -fno-builtin -fno-stack-protector -fomit-frame-pointer -fstrength-reduce -fno-leading-underscore #-Wall
+	CFLAGS  = -m32 -fno-builtin -fno-stack-protector -fomit-frame-pointer -fstrength-reduce -fno-leading-underscore -g #-Wall
 
 	CPP	= cpp -nostdinc
 	AR	= ar
