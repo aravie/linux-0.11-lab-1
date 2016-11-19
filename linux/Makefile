@@ -152,15 +152,14 @@ bochs-debug:
 	@echo "Please run: export LINUX_LAB_PATH=${PWD}/.."
 	${BOCHS} -q -f ${TOP}/device/generic/bochs/linux-gdb.bxrc
 
-# bochs:
-# ifeq ($(BOCHS),)
-# 	@(cd tools/bochs/bochs-2.3.7; \
-#	./configure --enable-plugins --enable-disasm --enable-gdb-stub;\
-#	make)
-# endif
+bochs:
+	@(cd ${TOP}/external/bochs ; \
+	./configure --enable-gdb-stub --enable-disasm --enable-x86-debugger -enable-static --with-sdl ; \
+	make) 
 
-# bochs-clean:
-#	@make clean -C tools/bochs/bochs-2.3.7
+bochs-clean:
+	@(cd ${TOP}/external/bochs ; \
+        make clean)
 
 # calltree:
 # ifeq ($(CALLTREE),)

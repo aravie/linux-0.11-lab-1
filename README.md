@@ -16,8 +16,9 @@ The old Linux kernel source ver 0.11 which has been tested under modern Linux, M
 
     $ make help		// get help
     $ make
-    $ make qemu-debug
+    $ make bochs-debug
     $ gdb tools/system
+    (gdb) handle SIGSEGV nostop noprint ignore
     (gdb) target remote :1234
     (gdb) b _main
     (gdb) c

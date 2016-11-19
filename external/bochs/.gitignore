@@ -17,3 +17,13 @@ parport.out
 ltdlconf.h
 libtool
 .bochs.out
+
+*.a
+*.o
+*.la
+*.lo
+.libs
+
+build/linux/bochs-dlx
+build/macosx/Info.plist
+build/win32/nsis/bochs.nsi
