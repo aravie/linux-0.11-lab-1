@@ -1,4 +1,4 @@
-UNAME := $(shell uname)
+UNAME := $(shell uname | cut -d _ -f 1)
 
 ifeq ($(UNAME), Linux)
 	AS	= as --32
@@ -6,7 +6,7 @@ ifeq ($(UNAME), Linux)
 	#LDFLAGS = -m elf_i386 -x 
 	LDFLAGS = -m elf_i386
 	CC	= gcc
-	CFLAGS  = -g -m32 -fno-builtin -fno-stack-protector -fomit-frame-pointer -fstrength-reduce #-Wall
+	CFLAGS  = -m32 -fno-builtin -fno-stack-protector -fomit-frame-pointer -fstrength-reduce -fno-leading-underscore #-Wall
 
 	CPP	= cpp -nostdinc
 	AR	= ar
@@ -16,7 +16,20 @@ ifeq ($(UNAME), Linux)
 	gcc_version=$(shell ls -l `which gcc` | tr '-' '\n' | tail -1)
 endif
 
+ifeq ($(UNAME), CYGWIN)
+	AS	= as --32
+	LD	= ld
+	LDFLAGS = -m i386pe
+	CC	= gcc
+	CFLAGS  = -m32 -fno-builtin -fno-stack-protector -fomit-frame-pointer -fstrength-reduce -fno-leading-underscore #-Wall
 
+	CPP	= cpp -nostdinc
+	AR	= ar
+	STRIP = strip
+	OBJCOPY = objcopy
+	# we should use -fno-stack-protector with gcc 4.3
+	gcc_version=$(shell ls -l `which gcc` | tr '-' '\n' | tail -1)
+endif
 
 ifeq ($(UNAME), Darwin)
 	AS	= i386-elf-as --32

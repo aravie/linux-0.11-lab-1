@@ -19,7 +19,7 @@ The old Linux kernel source ver 0.11 which has been tested under modern Linux, M
     $ make bochs-debug
     $ gdb tools/system
     (gdb) target remote :1234
-    (gdb) b main
+    (gdb) b _main
     (gdb) c
 
 ##2. Build on Mac OS X (Not tested)

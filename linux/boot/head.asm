@@ -20,7 +20,7 @@ PUBLIC	pg_dir
 PUBLIC	tmp_floppy_area
 PUBLIC	_end
 EXTRN	stack_start:DWORD
-EXTRN	main:PROC
+EXTRN	_main:PROC
 EXTRN	printk:PROC
 
 pg_dir		=	0
@@ -151,7 +151,7 @@ after_page_tables:
 	push	0
 	push	0
 	push	L6			; return address for main, if it decides to.
-	push	main
+	push	_main
 	jmp		setup_paging
 L6:
 	jmp		L6			; main should never return here, but
