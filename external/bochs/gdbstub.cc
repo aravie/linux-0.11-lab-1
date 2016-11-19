@@ -489,6 +489,10 @@ static void debug_loop(void)
         {
           write_signal(&buf[1], SIGTRAP);
         }
+        else if (last_stop_reason == GDBSTUB_STOP_NO_REASON)
+        {
+          write_signal(&buf[1], SIGSEGV);
+        }
         else
         {
           write_signal(&buf[1], 0);
