@@ -53,6 +53,7 @@ Image: boot/bootsect boot/setup tools/system
 	@rm system.tmp
 	@rm -f tools/kernel
 	@sync
+	@cp -f Image $(OUT)/
 
 disk: Image
 	@dd bs=8192 if=Image of=/dev/fd0
@@ -114,9 +115,10 @@ info:
 
 distclean: clean
 	@rm -f tag cscope* linux-0.11.* $(CALLTREE)
-	@(find tools/calltree-2.3 -name "*.o" | xargs -i rm -f {})
-	@make clean -C tools/calltree-2.3
-	@make clean -C tools/bochs/bochs-2.3.7
+	@rm -f ${OUT}/Image
+#	@(find tools/calltree-2.3 -name "*.o" | xargs -i rm -f {})
+#	@make clean -C tools/calltree-2.3
+#	@make clean -C tools/bochs/bochs-2.3.7
 
 backup: clean
 	@(cd .. ; tar cf - linux | compress16 - > backup.Z)
@@ -136,11 +138,11 @@ cscope:
 	@cscope -Rbkq
 
 qemu-run:
-	@qemu-system-x86_64 -m 16M -boot a -fda Image -hda $(HDA_IMG)
+	@qemu-system-x86_64 -m 16M -boot a -fda $(OUT)/Image -hda $(HDA_IMG)
 
 qemu-debug:
 	@echo $(OS)
-	@qemu-system-x86_64 -m 16M -boot a -fda Image -hda $(HDA_IMG) -s -S
+	@qemu-system-x86_64 -m 16M -boot a -fda $(OUT)/Image -hda $(HDA_IMG) -s -S
 
 bochs-run:
 	@echo "Please run: export LINUX_LAB_PATH=${PWD}/.."
