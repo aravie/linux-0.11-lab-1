@@ -26,8 +26,9 @@ fi
 # `getconf LONG_BIT` works better than `uname -a`
 if [ `getconf LONG_BIT` = "64" ]
 then
-	bochs -q -f $LINUX_LAB_PATH/device/generic/bochs/linux-amd64.bxrc
+	bochs -q -f $LINUX_LAB_PATH/device/generic/bochs/linux.bxrc
 else
-	$OSLAB_PATH/bochs/bochs-gdb -q -f $LINUX_LAB_PATH/device/generic/bochs/linux-i386.bxrc
+	echo "TODO: Support 32bit"
+#	$LINUX_LAB_PATH/bochs/bochs-gdb -q -f $LINUX_LAB_PATH/device/generic/bochs/linux-i386.bxrc
 fi
 
